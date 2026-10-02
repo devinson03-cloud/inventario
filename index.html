@@ -1,0 +1,1096 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Rueda Publicidad · Inventario</title>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<style>
+  html, body { margin: 0; padding: 0; background: #F4F6FA; }
+  #root { min-height: 100vh; }
+  * { box-sizing: border-box; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/plain" id="app-source">
+const { useState, useEffect, useCallback } = React;
+
+const ICON_INNER = {"LayoutDashboard": "<rect width=\"7\" height=\"9\" x=\"3\" y=\"3\" rx=\"1\" /> <rect width=\"7\" height=\"5\" x=\"14\" y=\"3\" rx=\"1\" /> <rect width=\"7\" height=\"9\" x=\"14\" y=\"12\" rx=\"1\" /> <rect width=\"7\" height=\"5\" x=\"3\" y=\"16\" rx=\"1\" />", "Package": "<path d=\"M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z\" /> <path d=\"M12 22V12\" /> <polyline points=\"3.29 7 12 12 20.71 7\" /> <path d=\"m7.5 4.27 9 5.15\" />", "Wrench": "<path d=\"M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.106-3.105c.32-.322.863-.22.983.218a6 6 0 0 1-8.259 7.057l-7.91 7.91a1 1 0 0 1-2.999-3l7.91-7.91a6 6 0 0 1 7.057-8.259c.438.12.54.662.219.984z\" />", "ClipboardList": "<rect width=\"8\" height=\"4\" x=\"8\" y=\"2\" rx=\"1\" ry=\"1\" /> <path d=\"M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2\" /> <path d=\"M12 11h4\" /> <path d=\"M12 16h4\" /> <path d=\"M8 11h.01\" /> <path d=\"M8 16h.01\" />", "Plus": "<path d=\"M5 12h14\" /> <path d=\"M12 5v14\" />", "X": "<path d=\"M18 6 6 18\" /> <path d=\"m6 6 12 12\" />", "ArrowDownToLine": "<path d=\"M12 17V3\" /> <path d=\"m6 11 6 6 6-6\" /> <path d=\"M19 21H5\" />", "ArrowUpFromLine": "<path d=\"m18 9-6-6-6 6\" /> <path d=\"M12 3v14\" /> <path d=\"M5 21h14\" />", "MapPin": "<path d=\"M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0\" /> <circle cx=\"12\" cy=\"10\" r=\"3\" />", "User": "<path d=\"M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2\" /> <circle cx=\"12\" cy=\"7\" r=\"4\" />", "AlertTriangle": "<path d=\"m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3\" /> <path d=\"M12 9v4\" /> <path d=\"M12 17h.01\" />", "CheckCircle2": "<path d=\"M21.801 10A10 10 0 1 1 17 3.335\" /> <path d=\"m9 11 3 3L22 4\" />", "Clock": "<circle cx=\"12\" cy=\"12\" r=\"10\" /> <path d=\"M12 6v6l4 2\" />", "Trash2": "<path d=\"M10 11v6\" /> <path d=\"M14 11v6\" /> <path d=\"M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6\" /> <path d=\"M3 6h18\" /> <path d=\"M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2\" />", "Lock": "<rect width=\"18\" height=\"11\" x=\"3\" y=\"11\" rx=\"2\" ry=\"2\" /> <path d=\"M7 11V7a5 5 0 0 1 10 0v4\" />", "LogOut": "<path d=\"m16 17 5-5-5-5\" /> <path d=\"M21 12H9\" /> <path d=\"M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4\" />", "ChevronDown": "<path d=\"m6 9 6 6 6-6\" />"};
+
+function makeIcon(inner) {
+  return function IconComp(props) {
+    const { size = 18, color = "currentColor", style, className, ...rest } = props || {};
+    return React.createElement("svg", Object.assign({
+      xmlns: "http://www.w3.org/2000/svg",
+      width: size,
+      height: size,
+      viewBox: "0 0 24 24",
+      fill: "none",
+      stroke: color,
+      strokeWidth: 2,
+      strokeLinecap: "round",
+      strokeLinejoin: "round",
+      style: style,
+      className: className,
+      dangerouslySetInnerHTML: { __html: ICON_INNER[inner] }
+    }, rest));
+  };
+}
+
+const LayoutDashboard = makeIcon("LayoutDashboard");
+const Package = makeIcon("Package");
+const Wrench = makeIcon("Wrench");
+const ClipboardList = makeIcon("ClipboardList");
+const Plus = makeIcon("Plus");
+const X = makeIcon("X");
+const ArrowDownToLine = makeIcon("ArrowDownToLine");
+const ArrowUpFromLine = makeIcon("ArrowUpFromLine");
+const MapPin = makeIcon("MapPin");
+const User = makeIcon("User");
+const AlertTriangle = makeIcon("AlertTriangle");
+const CheckCircle2 = makeIcon("CheckCircle2");
+const Clock = makeIcon("Clock");
+const Trash2 = makeIcon("Trash2");
+const Lock = makeIcon("Lock");
+const LogOut = makeIcon("LogOut");
+const ChevronDown = makeIcon("ChevronDown");
+ICON_INNER.Download = '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /> <polyline points="7 10 12 15 17 10" /> <line x1="12" x2="12" y1="15" y2="3" />';
+const Download = makeIcon("Download");
+
+
+const LOGO_URL = "data:image/webp;base64,UklGRmBFAABXRUJQVlA4IFRFAACw5gCdASpoARYBPjEWiUMiISiUeZ5wiAMEsbd6S7JYBzFLdURnHs/5R/2T3Y7B/cv7n/ef8z/a/oe+7dmHVPmL88/7b+8/lz8sP9T/0P8N/c/gV/F/8H/zf7l++n0Afwr+Pf8H+0/6T4B/5P9bveb/af9n6hP6//ff+z/offd/0n7Ae53/cftp/VfgD/sv+c//Pt7f5n2EPQA/af0zP3D+FD+uf8P9tfgd/on+S/+vsAf//2y/4B07/Yv/O+j3x//G/kf59/jH07+E/LH+1/+z4JM9/Z5/r+h38l+9P5/+3/tv+9X+z+d/99+Wn5Ge3f5d++f8n7lvkI/E/5T/f/7X+2n+B/br6juQnjN7N/wP2e9hT2S+q/5j/Ff5L/kf3/94vrj+k/zXpj/N/6n/nfk79AP60f5v8tv8j///fV/3fjCer/8v3A/5j/X/9X/hf87+wH01f0v/g/0P+x/b73PfnH+G/6X+L/1H7YfYb/KP6r/r/7z/mP/R/nf///6vvD//Hum/dn2Sf2D/76LvT6wEL3vdyjWfX8aE5j5S9s6Muoobvx0L5GkCjrvQD09ohf0sLDITj5LnqqIlyjNGEd2msX1SQFz+AufwDINRsHa1PLPzz5Pfs5NUvKHo7gCsq4K+02h6bWUSW+/a87huErGxFvdOTYST+f9T7t3pZ+1otgby4POn1gRWr+zkVWNF7kN+agFyZRXfZ6C0d/U44f/dCVwFXZPAsX6BPG0azFPMxsn9/IBDa0Xm4UcjYbRH3t4mVS999HXN3ZzQGAvgjCTZi2LfgLm++ieIUILHgUS2HG3Gq2W9oyYXvMwyAkvlp0n58sZYkCMiBOtHVjcTPKusXrrt4yWd+yYhAVh47Jmk0AgAFfX/BD+rXmA/OO8OKtlx81reZhN6/AXtbCC+ImKqV2lQO+6l0puYZdSpyIvMNc5rqWWtaNCiAjSdDK8SnaZ2pWCTsue7wROW9DzAGP0MjX0mE4ShJhaIHgqiGaCxHifW43b0fgMoJhDffV74ihBTP75Bl5ReZwCfr/G/mpbI7p33mk/qG5VOOO6DGJ//sqTxb9Vj3v5q1gumxkzxKFS08doCbBP5mudoPM2aLbRpT/yBSGLGllzp6ZKocvXWGCF5JacwRvlPOSfks+Ks3Oboc/3b7ka444qvFxoP7WWIgYZZT5aq1QfWR5kPv6eMQ3PzJfjLzF4KN3UaCgDn8HPduYRsOOMrgLdQ2/xEeitA3TchpqAH3/JqRpUBrzPW+VtS7ZNXgOyJUEDqrGhYml+S+T7kWZl0Yz1lCl3QKkiYJ20xhAdeldI6Il8Tzv+8PhgbPGAihaffqdFv1f99yMhjRvv2ZXiPrPtwsuvec9+u5gLJAF8QHy0doIr98WmeZxWP6Z6dNMgOEcPYSF1AgrmMocS10YtJbZGY7rDXqMDVkm71fne+A3juawcT8sZr6m2Hv/XCr+nRL1afQXUSjMA76LXlpT11Y1rAiqY5UysUewB/TzymikFWHGO3XRlxhF5Tjs8OYDVFOQduI5f2nGj+Q6SDUfgdRTL2vvMMU3ya/+XqkZ//E4qJE21iM6qLXVRazn5isqT+7Z3RhZk/zq4GdwP3nxw9kcTvFHcJB5GL2gQf8LOw3HKU1lYScsRdAJAQhjiapAJLkXZ8G9PpCZhZrdFioNjmXvgG2D4hViNivgw5FWEsjYgugg7NNG90358uncte1CCveLVft436o3Jr+lFwWgb44dxs4KFyB0qayTEZ7XAi5DweJqa9qbeHofJjAXpwMi2Lh03tnBAQLYzTljP5RxowI1H/u3x53rw6MNWtIrH4mvj/9XNK8cyXpJl4KNDDTv1eGYPhyTohS8/XQtMimYuQXwY8jyvOsVu/wCuZSRbzKGCPlbU8JegBr3Vv86D+gPnTIsixf13zQmudk/JFY4faCih2fuPC5jtM1aBi7te19i3oHk2/CcJtDshD/XBBfNoBkmD5oTk1I+uZ986LXB47YzY3T8TAGDIvCESJdtLxC4Icret3B3tXpAgeKav+H377LKvuBl4vyInsBCy8Du6anNgXfNn8u+VZ1accJ8i7qg9vHigOdonNLu6nTYgHVbNTnHR6aILvPh6SBV4KRb7pfWSt4eSL41tjElEWE83XoEB0NiptEYuKYOTPk9skS22ejEzthgyIHVoO3dWIapqxRuvZBa2wbhAgUjY0gXAmQ3vaROWxXhIPBGdBmik+3jlWMFw3cR7C+/y9niR7GRYAFKcTXvrG6FIG1nUkxH5DTSkz/Kqf/dlEW00bZnQJiEePFNhD1gYawowJoG14gxxAZ69NiiXKLedSAw426YnWGFofscyeNxhsIaNLS1IdbTlQ3CIhTi0/xEyY2/LnssEsaE+Uf18KFGWg1ZHhuKosSPMBrpyWAGOVV6ikCUrzTddOTyH9C9HKgXUuttuCemo38OZbO3PiAvO3C77rKAi8BowVWeCerkAA/v+3XikVJyzZSddPtlItBoEQpv8qnqyrh5n3Qk0qP17UR+1AH+EvWzqO2XWKjdh6AON22nwL2m4z5N2E8sXiDQdG2kmSZHUTn5+samXdR4GMGZeHr/tKbC6BgcBVxF0kQBaMQa7XaZU1bMoAvl34205Nkqbs2G2jn5E3QN9E3IqlxUbtcWEQOgE6cz5mmBoRyMZw9bkwiMTxyNS88mFO+wPB4+pBA8M0Ax4PukVYD7GCgWigitY4rWzYBpOzHW9sUDMZQ1uXbbzgGac7ydXoGdaDtXYgIyyBekqL/oeup85v6PcBtFYCLylybmzZXMsFNcAHq+hU6/j3CfI5i0mHj5yBX2zHQDx/0g2s4Kvy6Jalpbz2+OYZL1EyrZeQTo4x+snRC0V9o6PkMhQP+6z4xE1O4S8I7LAykbW0Oc/ayyG86fQnImPOjgy5/khve1RT9rDL1zWxS9sxt8fZ5Eecfde3gcjoYLFka9vI8yuXHlQFFak9eqtpGk8z5OTwQw+fC0cAoOu0MioboRsdpFKX8qMAHzuRh3k85vXYiiCp7T0wBN0aMxNYWPPfI7zYegexAcWF56OoyumdC+e/8Bd9o4FFRzVT1fRyyka2laZLnNf7+FBlKuvGNtQDTOMTDg0ELQNKe/V62PyYIGqndli0FZLseHCzI39iGb1oaOLb0YFhzrbgUNC2nDgZ+Fmzexj/hmc6jC0YACupUYmbFjhtP7OQj7LDu2oVT3i23F576Nu4hulOpVt6RnIOhT1h/KnvLC0HYYNR7YU/r//kO5v6bB3RR0ddAEdTJW3793emLozuTiNXJGPlKlt4gh/jyitiYLiC/d3RhN2Kmch0GnDDfT/kKdfvOt2V23NIoa+gVrpeFhQf9ac5QjGAjQ8r+PRiusNO/q8RnlLqlz4jlnW14BVxcgJHOlEHhjIR2Q6mjZ3MN1uhK2RTVVGBeS5cbuxNTzddWgP61y6xT3SDt2TaCFZD7mts/AXg88xIUaMsHDjBORTefPbEw9DFuraMcfnfGeex/Nl+0A2c8sNEPgoqK5t9xpR+Ak0c4VFXBdip2NqvpoN8U8zqOH64TBFQMyOEtspFFcohu1cFks884WSDABfuE+iOzvsqPCeS6g2KIWKH88ITTD6Dw8qHGp+g1TewLPOY3U4CLfAMDVsLDD0pvYklYFHGfTl2/FDBAtF8cyIIIQqnpivCHOK5y6PRV6VBI9/VRKQPoqDDtnmssUW3XRbZ+abHfJKwC9OSfMCbStJjtNA1HEeBGDwVGfsQOxz+FExaHflo379xk3bupkudCrRnAzeyo5HAjuoMvEcGX7sVjrnD8qmBAFCFnfmapBY8aTrACJBBxTd3aixeL3E88SgLvib+Xdl1+/tGD8fRBXOam5UZNW4bpRpGl8PcjGUwZR9PYAWpaDv/Ry0iR7DgpEeN7xY03nQSxaoHW9/3145B0SGU2U5aC2qZcJgEY6FjLPVTFRoh0SSjgTgdJQPsA5A/H9ZN5p9rD4d2rcRtwyjo/ALDep9LzrVYZbh8ba2XBtwP27d7Eh8HJcjljmC+qFrwUA2G4atYdn+wIN75K489RczLUB0b7SIzlZqps7r6ILohVaA/jF1SrXTYAV5I2eqCRteGbwolfCUjH8HtyO57G5muzNIKrzxLzo/nV4ZrgsZ+U4+p8E7K+cCjm+ZY8osX3+eXevcGweHvkZTMQ+uw/PJqEWJo4Jm2MXvEcEVm7LpEHkY5KmBJqXb2e4K63Htoqy7faiV3B9+weTaZkuNL8bjgPujHQ+1dIBZBNul6ypUKbg+q1JGCN8gvFGAaz1xLOYPrA1E2HKv1SRRUGF28ea4F/RD/AQwlmwXomxovE0ARAYM4Xo9ivTfXnTXTkB5DuXecg3HONl4LkLU3C2kawIKPyUzp+nq+cEOXk958Fk6PpTpPkUiabkTmOaMyoPh4WdHKqeGE1Je23FPZ1zFP2fSpjaEcS1x5K9kJtbdNM/nrS/WSsVZtt0zLX01ZcOI34MZy4UWhN8HpTvAM5Z8AePL+y0oW6bV4yKu7Xecnv9hnfanoHsX/vsA35fRV64Gxne68EblSpkIBdcsTyZ1gMtLE7Xqq+CKDa6blU1XT5ZmsbYh+IIyEaXDKqq3IQHeicqXrrMGycF5z2KhS3BMIfYIesNLKX003gYlB7XMStZyrJ4+y5iTcgaGPjXiXxrh9g1EOzBzIVzmzo9g4dBDb+YWEARiPviY0Q0nHE06i3d1TjewyXfAo7n9b4iaoverk6XQMPcDzE36szbs8BmRdEV2EwJn9KWAMMdZdH60LMRMFkWGG49jQpWkpkeUpSV0gXQtdHoQGrq+RJ1+cAIWTP3hQgzOpubaRAlN2dbxjCDQl9J4Ffuen2fLFl9R4ANSOG91SbVL4CxU/vbcLvjsc/SHTS+4ZdlV5Vd5RU3gobXaEbIpQvNKz+xUTS7lr1a6eAC9sMx3j192bLlWLrdPujMfxgS6odOnhpUogjs8fNJ3cgA1YfJSipgwtGE+M0KIn2McMcGUfD5NUA5adUeRFL1UIQ1GC7dSjwFK6LmsqzFszKK6jdccc3nzR/PeeqZHHrE/4xGDDd804/UGtAnKTP+fD+JgJdZCxPgyKTUffmheYo1dn3ZYrzptzwMmj9Vo/Y4f4bY4SNjrv6ddo/Xdi/9cqhlVk5J2lAc/uMWAGzrIwuYK5c4JPInQdOuUX9lDn1b4jtma2xjTj83VL2z+B1wBawV8NGKz+W6pG+9a7zhgDZatnswMorAB0hPn8IxS4wJzxdzZaRrqnQb+MUnC7Cp9Ug5t3SqkBgbdbN3Dl8SqWv5jtITw8GFt9BYbNbKV2t6rQITRAqutT6Ik4PeyJnY0TyDL2UPsejxG4J5g2jruFqiF6uU1vKhLKhg1kdX9ICKtgoxil7F9S5hQm5tDD2lZSxU465v4aKZnBSxbsLj26wI5rkNNO4/vXOGvTlYfTNcVGCAbgcM2p/APkdpXDr8oFcy1oiyspuLxptJSVTiOGGzKY9kaA8jh2mASRSnwR5LIkHvMCctaxElT+uiJfyKtvs0zCmLeW1GdEv0/xzPfdnLGp3/q3d07nLl+9W2jyf3UxMOIhHw4HhTf5MbN36o4/JnSqNr9PKJ/t9415sEO3t+ArUjTuCqEJdAS0h85jgu0iKJhBFv1GnJPBJAgeERvxDgc9PE3N8VES1vGSs8KEGNT4WCmZHo/sxTH1CzNbKLWoX28mYdpl+kJhEh3b6F/Mpu+ZpjtibnFlgmANEXLJVqJmOzmtlFrufqZ3S1LxmQWtmaPiDrLdnN4K4BcwXTn4NQv5sA3VIzJisp8pOn1AW/hY4hETEfaa3yQdl3AApaZFpSsYGN0/UA921alf/wVF8/uCSXIxQz4DspBFQcrHEchyzbr+SnQAXyBruaPGJkiN0I4rw3jjoFLVawFbzNb3QruzYADfnBkQd+MZChfr84y5lYm7BMMojTYqHO3D350CYY8WILIHWuok4K5RJYTPwL0yWnGNw0I1UZxZWaRylnibmVDOlqDCp5oXUTLSZ3FHqtVQRZTNd3VKx1c35slMOYOCc0GZiHNoEQMYvUqFCtwJkgv7GAEPL9n1yXAxKBsUro5F+7yf3R5+X6nDHo6IVgqiMLrNYYqBkT2w+Angark6rCMVGK9f+LsbiGLdag5zIqqRZrJGYgX1dQUtJremvoYwXDPrPeqtMf9R0ENt4+TbyI83LEBFOLMmeRwVTHb8vmogoQn+KcejYdsb5ujW6kupZiFKcxr4Vo9NwdmgdXUwAUwf3XgTJBzmIQ6daIluG1ySkNT3B/Y3rh8YaD576haTpPWw/id/EMHGKBHEOlBEwqhOCctxlfW0Y4QntnJ0jQubZ1C/f9pTZP8q980LVXDbP6+RZUNCorVB5uutdhjF7Sv8Ig8wHyEBlEOEusmrU0YDdc3vSa6VW4maUKGnfl4kngrSC+/awmLng1zq1vJAW3IK7zhWB6eZJlkpqTRj0vyZQXG4Hb9rfjM3lduulQ8nVmSrkd/gTNGsPguZnQXnSt9ta/KTbV/lF7+QfuKjsXrIQxsP6n4zGwuz/4obbEAvus/vKz5pmnhYrD6yvxfhDrYVoE39QX1Nup78qUXpJp/f+AP0+MYMW/8ysnCpcIIJf9oOdP+K+XsM92vVUTnl1chMTcCqZBtyL2d30dPICjhiS+l226XZ5jfrqf2wmn1DCJB0pscQjLkzC5bQ7Oe4KrgqPdTDcP0poViUNnfZ+XBzXD+jyzotLMYZvocEKc78BuwPF1QO8FUyjSCwBj9nogEeyQcgY4aLS37npM0kzvCUnRUUN+LlHFh+CzwfnXibQiflEQxZfVbU0soXheIj2z7FlQidIMUt+gKFVxjZ1M0F4HuoVhWRBwH2lJp3W57DvzvJWnKL8d56pYxf0Iyk/KWj4NgqC1yjpaaoSXAsmRRh41/6JnC+H7+VeNAN6D+dFOI7LfuYR1CKBih3gm3WKw5fXW22flz+uCD7jyuHJH1lg5GUXbrq1Gmnl0BMuBM5k0arOGsw5aOHsRv3Kv5bGXlRuw+yCi2oAb3L3YvjEejM3qaBYhklbyq2lL+vkKbxt0aQa1a2rLTv+CWNp5AAKKdWkIyuNec2wJvOr2KJS3buo/KI5jc8XaDnkwc5SYPYh3Zvt97QPXIFFyGIsvwCKigw1BhMAkWiP7k41TLnMG6WRsnh9nyAadBnmNUsDmr+L/8N4vjkaTYUb926Wqd9PcdOzVOSHZhapeIgCKUJQkFhmxEyMn7mvn4xIJQJ88E7oaM04YJ9s/l/Fc87S6AEta4z7hG+Lr8KA0RzPn02DE9NrcJ+4BNGgYPxiQIzP0hLRXyyqqp/whLP/3KO1ymjHpVd4QY24x8oXpE2YYXambHDsFBz+ZU9BRCTWVSQsWTOSgtihDvO3SGJUF0xw3OaXfpbT/kGBbEchWZzRpG8ukwyDF37Ulk4DoVD4cUIBOjC2LPKV1LQYAXmKBTDJqJYkP9qo5P5mTN8xU+aEaT+2KU7RPKWXFFQwbYqCAAm/N7A8t4IGOZcwUJ0lKlKnRY+SOAOWorxYlbquNX85xMl/z/DRv5udVPBDg4rhaeGjv93nj+akEaEDwgWqIlqHNbW4t9rTFTWm+8dAEBjIaKB/P7m2dw4It59RvKwsjBExzPYEKfa6lvCELb03L8ZtHcQpag5qcOh6f6fUakOvRSe6fuurUJ1Ik4R7VznJyQBumemQgzEq4tZc/t3imoDsknjLwRQZnJxpJlxd6IiFPUFM0gM8F+mY0sl4IJfGTOM+mDKIPKs6SIBojknXTppL72dvoMQ5LGzRbiakNaKrpNr43vY8iv3a7tFM8JnMDtC5z3KK7BC0lWvYIqwkh4rdwqQGC6EoUBiqW3Ppx7vcZDB0ZuxzNDAJALgUjmynkKo1RVzj1hmBqYqYMNcH0WeJGSxTw57EOtR+57YusFSEYK9l27Gjgk2Vh/zvO8wg8+qDjNdkEcqwt0Lf2Z7hvXZ4e0bp2pkklBPKdg4VAKKbodnxf6QnXZT6+1Gd+LO8xYgQsYJdVvCX9Iq56n6YY3JXYKse/6S4zIkb72B07qg2fib1ElIkkYLpMmU73rjoBnSZhTbAM9hWkUNas7iwttls1wo1V5eq+uZjfjfTBUcfJXeayv5mo92btTXKvBjFrU9hJMeng24zv7EdDsfszlafyJltBGkR/gXS+dsLU6plEUN20ZsUf21Wk8BEInlOgf06YRneJffq4eSvl1jYknHUaAViyZsS0yHMzlGsF5v9BS/tdoJw+m7bvCcZemhops0+BY+hPT9H7S4UTl5jjlhXSGOrCKYgOFiUD1O3x2FYhQkzVq2mwY0W9ijYvaNk/NIbLMxHIFZ+8VLlQ0TITrsMAEnSGBzoHxy16cuktx6Je/tTV1AeEGCj0JJ0mMLOEzpwOZlmHfmtSHygkiMZLf87rhqNHqdtw+OyfUL7Fa/p8dIrzTO3Ev8uEmGNpCbfOq4VcrLzwE0yGee+8tYd9xygC13rHkkHdnB/fN8BOt300e0GbRf44Jrbtw3yaw2fmR41jWNgouEnouustx300MJuNvZcH6O1I0hyZ8cTUL1eJyuJdDh3wQIe/398iRYUmMz5/YmUx/H/MlPoWKuM9idYBbxYnFHlaaR4MazXs4S2yML9xpHgFPhHfZueyFZ9irZo59qjtxJD9yP9sIk1ocj0JLPF7L5qSQJUKBqH4PeVE7cq28T7xYUvq6cpsPgYzTz1NqDGFuBy5jg7goZeN90KSUUOfbpTtvXAQp+Wkp0mwmAuMIbzrxtBW5gWU+WUkf4+sFh/dWNSMjA7kUKdA+Xglwgp2odaJiWzWpqvW6XhBb2hmr46wkJYIhXAHVIMO3Ls5ddLrHhYeIbDBoLjvHKDVRnzDvX/NRm3LvKiIBuLsNr4yD5S6k0X8fpZJOvgRS7T0B4oG4iEOyrltAAvhX7CZITkgtUc23A4sgnczgVmMiEKb0MHwfBqEAy9T0S4gIEmJ+ksjm+SPcBub/qU4/MrKnhwVDQQMarJBsS9QrhW2Iw5E8m2eT9+JaCJSVkeNIp9kStLC5cE+Ysiu9D3OXgb/Mjw7NOIT93r6bQAu1qZuge8pACqyNfbdThxGknM7KQjvAYeLRgoz5GcCC5WmdJ6VNCR6uW2GAD11tkWF5VNLZvCb7gO0sAKj/bImspYa5BWAX2iVNufHPgsWTvRJa0v5IYEAF4PUOrnO1IZ9pSi6evxxC/Ahann4w856WrmsFvp/EoLLg3IaIGkNYf8apedX2RnhQ21beUli/pM9fNnmOF7rjbw5tCWQHb/KnMDl5T/2TFhQ/nnfUGIAuEQPOmkIB31Qh1/aGliPG1DlCPY3jOb0YNTFuchj0TI8tVdDHqpCTPe4bzjJvYRh0SGYUUtTVkmh3OLsxHHv5WYlqh+amtfH6WYlPlSR9TikuUYvEFBSM/JVkYwGJ4p7y5qeQaayK9RVXHErCXyY3mbEMLrLScmQfv0lT0ELzzgi8SKJtYZP72zMqu7gS7wOQwoWHMAhnYcBnbAM0ihmzHKV9Fk+PuXRg8+J9xnCgB7vY9dFJZofK2X7AjezSGJZ6LSwISbLIBf/r3rzMNLu43ncy6o8CyTqXTkW/JZ6vS03V4tIs4KoNLt2I/Wp7tKoGQVmEd20O8HM56LdyPIvK29dq5aPuHaONJFZwh84PsFZ3RghXSVqoUo016hA1uTGVGeJgAKGn2cww3JqbNhSzBD7fZPrODkfqNTzXSoM+ia5vvtkw6Fz/FVq6sImPLA459siwpiTPq/o0i+nBNiJPRf9oWo3R51cdYsGDebO1Vq0YydxEGFUwDZEkO9DlywGPgrzuTrsaE1FV1ryp8GKZlitMg4ESDlHjkuy0+FIL2PNAqCLcZKHcS9Xtoxd0yVKGEWzrq0X5cZ9i+G39796bLc3roNu9MZR0dSW9vlpU1uZh+uC0D9l6Si8iTpeG/dlVRF6IC+KebydgYomxCJoQMxV8UAdI1mWoFZEqY+maZIVexuJPBY29wt9MaGMnNxS/mTVNjNW+mzlfbAm2TOpsNN4uDixINp54qgfJqCemJRPLPTvtDstI8ruW4JZzW/sbtUeHwCJrgR18jOq78rZH0m+U9kUX8n8spiOt9uLRRH5Ajq9gXcoOvtOWd7TEyjfQN8HukCKuD3Zt0saP2Jm36rJAbELaqUrkkNtW/UGP54SINy4dbaOgqmg9YcamV5e6xJ1fS4kl4mul8pPn4Oxv+rQzqPweA36VUq3H5KljzgOjRGlRUZOHPVXN1t3u4/DxLqfTw8zdLj2M7nWk1mx0E2g2oCmAyt82IGj7aR0oVT80aNNoGn3/aHvMmJ7xHtlYkMk+7oSjWDaVA6st9PkpiteCIvErlDQAqCeBfKQ/SmfWNtk6ScFws3CC7xAgxT62ZTusRtLeUl5/WNB47m/fPNN6Me4HuXWqxvNDRDUQXSge7pobvpUI5QpjM6T9GN3Guaa+zUjl0AL5ewTU9C4drqEEhmhqMJHAx4sQ1RX+FJwv+FsDQZrdLbo10ZvElZeSUIxkohLFzfuJbpLnDQ121EQMv57+Ve4IYd6VuItXgwWpQydx23/ohL48jJxzcehb3h0SqkOumZ5wTnV7ZiH4kBU2DBKtluTxyx3fZmQXPtTirjRzU+LRjgR9MYVcq7OC8yJnf/6l0yrk5WYWNbsO9qztQ2/WChtQQWc3rEtkqTv7SqCuvT+gwBv9K9WvMjFOeDIP53shKxcjYoMyGDJfJPHvuW+g/ZzyT6kTvSAIunBbzjhro5XbmrfU04oWh4ZZ3rTHAwZ7YX+BBnQ8Etnn2owprPzAE1jfyPcFF5tUiTMvI6y+hpp+18aO9qIJCLmNybRuDRRnCxYUAOzRHAA8J+S0f1nBVbrjdwgsEYRsXVxyPlOwagDMeJu6zyBnNORhIxzl9VIIVF4McQ/gPLj83VkzQZJM9UKDKhUyRo34it+/PkPZX5q8WHj1eu4Jvfv6bYoxEKaM4ptbKGNuCE8RX3CYaBMiV1tS7w39eDvTLytSojLRWObNOyvgYsjcUeGQoqqqAa1EGJM0dEpAmxWeuXA6TFV7qNs9duUFQ+8yEcLoX947vcIiYitmBPbohb81+TWG6Q8Zmzfn6Ipimd0nkosNKesVnkwlUvT0te4DG07kbzAkbCtndfX77GjVPTGdl25rL3KcaWgCfPojFMqFCpow/wZyxGoS19JhrOMDX7Wjq/h8TrMc6Fh2+wkg652fOpNo29brChPD2INzu2V8D2EOdXTs3DJR5n/fg8hs5WXmkDZVIau/wveHIV7/QI8oHQ3y0hxTInx+wz256c1IonLBw3v3k2TMYoGRK1WwM6zKTtBJz6kQnHB8bHNC6wcwoZi3rr5xXyjoAoXOgfax8ftsHEXZ0vOXwtbqfnq73HSCkxkjpcHnxEwpqwgaswnAlHOqjOiH3/7Gs+RQnWrQqyUl3MoUq3ir2sEENrmmbR1uOvyPCs5ElL/d+WtOXyUilk0ibN4oHN4GDBtNfQdSs1/089Vn6nRP01IQqXdFF0co7VbR6/k6JLBdqIFYAbIokkPwu6Lm4Sn07FOnvHZtxZoSN/C5TQlc7nRhqVIx7W0txe/pScJg9puaEF6TdMpG6FTZF6dO/PebHQa2750TXe6Mt66ZppUo3vZP/NkuNjVUGwVs5Kz/8U9+eZyGcYbzj68yhBzOz1EJlOkYeMyYRa6xlugtxmKjK/xVxSuXcrLOVDI8kDSTxWs2cuCKVB4pM2w3E6CTjQdQ6haT1J31ccWT5+BzEm5FjBFQAXEj3nZUI9qIzefe6kwmvvgKtZnC2m48V6Xmq7ccWOqb4JtnUtzU2bYYpe/WYNvTV7hQudiyx8Tz2HcMFak28FNXygD9p/K94FnJTK/dq+67S2aw4DdeIO73Y9WYhLjf9bWuA1UkR4llOYbB1EVwZnrHmEwPIvl/uE6KHra/6GWUt6mYYFpb4KtEbD1lZ2PLguDoJjMV4vXdbk0c+LNu24aBJOPnWj3Xt7nP2yX/1j7+i3yVc3Hy8X6NXl7cjVWnjLe73jy5rOWZzUa41N1P0qQTFAc+96/os24RYUlN8mxPwr4fIFsZlctt/PkqKbEIwEisxwfoyKz7Y5vwC0Y/0/izubokiIaMl4vPTdjoJsrLJWDF2GPpzvX8Y72b/sKGgea3U/oc+4hzbwNcFj11YHOUZF0uk4LTTwe1ijSMSFZPMD0izlIla54k2aTPOHk8Nj7nhEcZ5Id1nAMCz8Z7kJWPgpdkyfMA222kkBNSBDN71V3Ri45HtgDBa+XSNrv54MMdi1R0Vp2TtDh4Kp+JMmWqsB1kbE77wH0clhLQheRDs5m7UNhhOivckOjGobNpqoC2R0u2Oj8W5mq8VZ8GvZyg7Ngv7PhdNFtwH6kd3tgw+OWWTcYRVBRCsFwcWMKXFtwvmDcqN5jXuSf9J5xXipxaxB878ABsgVJ+GEuT6YfBmNmvhLuYdCpdxaZoyVgSWupjkdtvYPNnzPB4PXFEv62n0JcQGmByzMffuU5SCdTVSJX1AZ9NdMEjTHztb2dWP1Sxf/iBN415UFCKDkeMFAnDh2megGSKD0F5+ztDbdliD43YhwYpZNbfLW0B9RQid7sqbjzeanvS4hmyyFkL6B0tEg8ajfRQfLdMKum+4SOsRaAgCrLsDo1b3wiXS+8bo1sC61GJsQEJjk6flYMwGXMox6hqplklAfeIblcmV5NtE4+d1GmteC17i5AKAQ/L/QjTDTf7t+4+kbZ8vr2kOlsThuFPEtXDaOh5jSVE6qzFdmanDp2sT1/Z7BjDNOxh8F0o2GF/paASdsWg+SX+3fopT7AyPNLa47cf1gLwtt0luxPP+3s0NX3LuDX+XW9YYSYCUcRKxXKXRiXqxw+anx6qzh5JnS+JfgvGGPX6CQucuI6AbXV1tNRy1GFAC3IE5bVpxkG0f1SFZ+Dk8nFjx1GGU5uxzHPUjl7DC+xAhI9UjRdhRVKtyh+3lbSKtF6xhYi/fZGzKCSBvN8wzCPeNUYZRzNH2XJlbre7sraJS0LHJcQANYLy4TK/WU5RDBcCC3YvTuQiWrup2pBpc+BMB72Im0fLnnj6nyTPlS8IYjlH9BDT4IKZPJhlW7IsZIPJKZn4jdSLA3V0HdLsiubJGeZgdzz9cHqYr56tVN9MRoNRz7GnRPhnjiHyVUo99o3PZ+VawI6wrjvcCf4QwFy2PATzEP9GqduXViKi9FGCNCZqFKhH7kYyuEaD1bUygJvywWP3wQ4k+Lp8rdHae1uPpZGnCKmioTiiZvZ7FWgfeEDPvj8S5Vf/VuP9xT/h1S+VHDkGhrVfP/2ngbKf5ymBWP+ieeli+wqcKsSpmm0rhv4z2t2PwphsGwCPUiZqt3gnmp17CCP/PTnqzH+StUFSIig5BO06R0VfAdwgXOHb9AOoMNfIOL1x0UW3pEQ0Bb3uNeXs2482MMveRHkLr16upAD87o27tmkB8qrAFexnjyzLIro++KTkDZbVqotFx4fpcZb3F6WxiEjFo6V4DFywSEY+M957IJM7s6LcYN7KbjcpFaRBZ15wb/nXFhRciyD3dvzctNH27DdyypHudPm+K+SHdpPZAO0IzEbEEAcsAjKJdk2Rpj+KP1SoStFy2OFUhcN0Fm8aibGrjqzCYS6cSCxIL7mYRVT96unVFuZ30VvyCjbdx2EpZVTZ0nn5GlkPOZfdU2tFvXWiS0X9NoRkq1f4BBb+PAGuqgKr9It5WyX+hGu0GatiMcoOdkK2u2+v5V7krUfji2qf2xiP/YkDqiysk2anBZNgak+oxe+WC6kvVAgw1qEyMtqwTCtsu9CFkNd8ptfBD0+gA/gNbpSlLYuzqqhxhPRDtJVjb+cby0maI9IzT4m/XCCYTb4XVSv91lA2xMCf0K/KVTx5nAcMeL6OKbG6SA3B9s/WlnrmHi8bniL243Q4pH6LGKU6jCxm+Ki5HWLpzM6ZLZcu4uvt+Zr7t+2FQuOU9wIXmqgSqIXU/eEBT3a4OIGzPvlivvRmQp7eJsh+Bu/F5KKnozNAF5BuOGtinAP8qL6II959KLgPkzPYGwB9kF5kIiFM94nGzqMUhtk2RpLuEpSRPnh8e57faIFohnfnc790ZqTSVoYekMVGMHaUz+35ja8gOEHUQWES9c3xuy2fwy1mJPARhiqm0MEq9sha0GuOBSU6MP21fyJjlyMhkNpg7HtweXh9IN3j/EKH8Cb/xjesVUC1dL8lRiGQKLU6te1vbDRM74vIOu5h4ajcHalMUNhFI7ptQ46A+kE6CvlTJ+j2yRocyw9PQMoJE2FYNWCtUFTq4i9TugljYOJhoGNnHS2OM1697zqlppu1lh6nbE65yVJXspNH0bgRMm0fd5ynj530ikFL2rWKZ+uBDQRXbSwx2vk1mivAO60mGkO/UoHNaR84L8fYHxd0Kq0u2SaaG/3q/9ULfQl/EROOl1hg54Dgz1gs4crTzDS3cyPsRDou95cG4iOTQ4nr2Wm48VORtXwdDyjn5zdgrf0fV0+d8TOxND+weB6kn2GUZKWXa4ma2SxsGvdEtn+aJKdRkz72oUqFDRdOF1vjDGZnGAOztgAt5brqpHFrH8geLhm0JsQ9fPROdYxQ55lS2l98+ylpyTk4LSbQxVE3wDHeHEgjzHgYYVEsT6461WWCdmppSan9rs0OXKg0eAx+Z7DwIDZTNPochDnoEFjDGO8gdbW295YcPqLTXHGgJT1skczH4fxQs2SvDapn/WQIGyaT0Pyr9HGZ2oJaY3UEPnZiT49C6ExNhbiQM2WM1EUh+Qkl2YjvZf74MHR0gy3KvaNHBwjmj8N/8HKmrON8ZMWjJDkYFArVhdDzX40+nwm1oFWCb4FiFHHTUuu1kdH19zima4tT4a4xq4b/gP9jkwK53pkBEv5KJYEsNXGb4MXmsud0qd1FYkil8Jfx9qyuu0X4GVG2rB3SqHWkO2k2oMd+ouyyF4jPaRhEM+jl2Iipz+RF3neqy+c5Osw0pzjx6tVvDyww3TtEEiT9TTBk4wFesOvHNcNY4Dhm+6iSW87kwr/olRBXI+VM1jOUt8JvKXqxaZBzjZjSU4dRIkmNnEVuoRlsR0ValaZYoFK+Z7avO0XBizsAH9zz0ZUsFuutpiFCUvqMMemifDv5ILI8zJiZIubu8p2M9GTBebGDgFGZtZzkdz8qW9lAxMfcaZyfQi5JPdStxxgjAqicevk6FgQ5UmlZs4bozi9opJQ4Fxqlljhp9ktgn6BiKICqyQhr5AaTtOGqKH6RrGKzgQsDxiPSDUlRMKHTGyBzS2D0qAAACXiHWvKVcfBW8UQWuKvPXscJ9vtycvYmlA7iQQQDX4EPA8ofk1tjNbGCZHnr5Bw7SzbOXFhEVmdf2NBaB+1ZGhFKSZkfvLut8/pxGYzu8Nka+afNoS/9ddki0+t0m3JpjFuRe2bDcHCfXHvMm0epLoqo2ZNgtHPl3mKPNj0PJAJxvX5f+gYz1Q0liJVT7k8SZA2tBwsiPOvnlVLuT95fc573ZAkMt60xmictsY9/vWjtkvQiC4r64RsVT31N0ddq5PC/1833dscNvV8GTovoQmsR5Rn1+7+H+yNUHfmmeuQ7InHSQZ3QMLnh8NnGUvLYnbYajuJRkuWsSp1kADJrTP/Q5MwBXjlNa1Pu3e//Em/um7Kt7ZKuNf4OhLJqO878s3203IaSY415uomUDJStSRAPKMgDv54Ue2iM5buYrLpMyukX/p/TWq+1l3KqiRerTRH8llCy/Ta++gSfG1CxNdDhz/yuVa37fMYC1khClg+gAktVvMT6JFrEpuhY9NuKsuYFsVh+d18aO72FqXvRDLR0Tn8pbvHQxFbkJ0ual0fHEInT8ILMImebjlvqcVRWWVDonw5rb7DwcikXdQpiNi9FBg5IIqmxyN4Mc5/cJxJCE014bXRF0Wy0OYA7pq75Mz2cJ4YkQ0ckKBfgyHaKWeEbrbf8rKZPJoRJ/fCJdMVlNyhsoKhVfUEbAy9n8Qhz8+W2GsKVXypCnlWbmcLglQWVuMHtR87KKmNCFSMV/VmJNtW36vX2TSBY0Tu7Y3wTX0dttVgYDQ6SeuIgLFKMqkEADuRBZhsUMsWgW1Tekx4zDiO1xoV/JOTiX7QGfgVN/wMWe/wWNW1rGP/REzQNskZ/Ll/TGickvy7zCxVnCcdv7dbV8DyooACLYVA8+R3vuCzgASYdg7zQzjJ4gZHBMafI09ahQ//sb2N2d9Zo/eHrL4Vvk/Si/xuFJiX0paqPx1NvGmadQaL2PjWktv7RUONRNcubsw8KP35TiZu9///LruDTOO9qq/hXPk2DipXXrjAj8YWP5xf6knagehROLk2lK/nkighuhe+piioXK7dhB1pIgGKOXcc0Am4NeRk28DxdruYfdfZbT349YJRYkWqo3pVit+GpG//gW/Tp5AsFg/w+H0H0rrBqRLRK3Ixg0cmkPpudSsUfMKXSmZ61/B2v73huMQMvY0OgCPJDoi25d/wfVLS2vZptYEfH6GhT2rfQnu+DxwcXyddQR8Ye11BCTmBYWkIj1bB4fxqgBhkVZdHhfRARQ2YO2Zwv/yQ+n0MegiYa+ybno0nRE4d3IelaKV4W4I1DZOMDrPA3g473FYQuOdNZs2o9NMx9tawTpXVIhFieVnNsjRfxXyw/oFc0uwBrSs1f+SFTen62c2+XckAW4XDo8+rQYnnyuODlVqTUA/FD3DWL+d2ztoyjP8bZ0vfKJ4X0wRUhfqqlpJsfU0YtfDUzCGm4lmOpYNAyP/3RvQMmSEupeOSVSH/jGvJfk3pSIYR/7sK8/ZUKxmHMILeQp9RN2Mf5gn/eJv/ciu2P58GiF5jPAuPLVFFV+xxdDgmq2cwUYUBVjYRb/P6iOErI56t+P6eq7zI6AOsqB2Hhi6NQu/KjYQEw/y+D22lqAnK6o+xIWsKe5eG8uJTZxr5D20wGKUgNQErHYjg3suBSbhxx6GjOFCwvisoz8AS5kfY3w18leAfAjbqknGiDmealdhPX/aIfU/nWUkGSWQRvSyOTr3mDiyySYKYabwH/bPwpOmebui/VCqm2eKe10nXXtCH3X3HZxdVsDpVWL3vxPEab1474NL6SyyTKe4a0ADHE4aannMiscQb01t5xVkDvrhWHwrY68bEhl/LjFSDnUTy4/ARNiOpj0IoWlFafOxB9b8by/mbNAe3T5uBPBVebxWZI8WAFoM2vA5H+vGOPEcW8Aiz/0MTnaPqBacDKqab/dXT5VoM7NAv2MVE7n1QcTaYIoArKE2aRQ5Oud20OFFbred25WnhNRqkd9+k2pTygDVve3a+nID+exYvh/8D8AdQEhcCk6Xl+Nvabg0S3YHjiZep6gl+dvnbSs6R5Tsgq2f7ebKR3cIRFouji0PGuoUpn49EEcgvjUfNaor6Zpn9/K+/T4hWJt4SfDFKjKC8IcxOJpJuzVE/ZGnYn+JnWHtGi1kl34qFkTXAo0trwUUWEvxE9vz+d3/0r332OwNIwbql67TxNQCXoQU5FAtHxzVMC1eYmELOvMTwooPpkl6DeT5sf0eF6AruATCeCnTvv1TV3K1SK42qqpBfsOAfagz7XfpCsHeMmG7LnXHWqLtF1FsPkeRbOUdpvu2xKCBe//6F2p5ENxj3r0WkOHxycZry/HDk/zenPNbE7NOrJIlxpB7okmnR7qju1ToTNtKmIR2XPMYDJMdPr/EsPvqwfgeToAdhQBCO9/TAic7JK9+LN8r0/hxL/i+CAdYKWWMMJD3g7GT/QKyqBFW99IvNRm4hGFKVpZDoQu7d+inKBjEFnfONzqzUSby0ZN2Umb3KyJhMpyjHWNvQmOusoZS0UIoOcjChEv7htNTaeScxbA1hQaeZAZRbSHQTeKqKbrnVe7/Bmm1rHsbU4Q6K+I+p5lV6tnD7NYMJhfnlFdHAVJslj3nvrPe6R++9PjSRJePoek91rfNw5nAbPSRcSD0l0/p3ntiW0HLXxuQpXGWGxAGmu4n7zc4UJL6nrjsWagKIvZZjKIKg5TrOaPWG0L9LqB9eY7ZsACtCH/Ruw+cnGdYrXF/jnkNMFx+RNgq9szFPnLxrGK7++JuhVzr//h+79Av5ODUOtyxPQ8gPCZor+aIONGwSjlfhInM2olv55OcQMeDhzXtkMpoJeLiITxlrZwzmqALWYQv/DD7YQgEEPxQ2b/mT+ip/h4gIYVuhHLdaIpcOnf3n/oxaz90emp50x1uybBO7KiywEoylCZ98tra1ingBKbsWr6ViLO/BsDP0Bdwtszr/3xXpUd6s2eZQ7gSSkC+66vUC/wHg2sorONCUW+j1AHVhK0mMx3k1w7/hLTiXYUKWuJb2aBgfSgjU1ktUKbNIWijH6tCr7jVklzIYc1aJV7ahEe4pqqv2DUte6eDektcAwdH9xGR/lxfR4zGFQzzK5O48aMRVmVYpOKfn6cSwUj2uuE7/i5cyFf5czPtjmeQsh0iDNaDpcOC1zM4VdDf8UvrjOtX9K73NSpR5h+CLgy1N1Tnlyu+Nq1hU7wPsijKGW4UbOh/WRxWjsfom9oIDZJP0eZWB1VX/f3oOYsY33LqqElineFJwGsmqBm1F5eOuz2FEUJ2AOLKfw1H8rmUCx9Krs1cH9dPrSHLWX6Ia5pWSkqLVPSn39UfVOWzEnxzSRT9F9oa5+vtS9E34W49gmSqsY+USpyreD3uBKBd3vZIICxC2pXMxQZS46N78RQoBHWxNnlm+dRJd8ShjNny4QTAS5d9ULQhfEZ/L454ck/U2wDytYZpLhaaYEddrZeNIMAzZfcCzlwc9g9W+8kl8TlJpnQSTlUM+X+vuJ5Puz4hMI1F7SOb3VkRIFeXW+hK8IXA5lYOJKCdCDxCK1gWp5aDye55kwb8B8IB6Kc+L/3D71bocIauvpwsKDhMwkJvO9k1bNXDYsxhQ7a5m5bLJdo88WEs9ZmYR8NvSnyX6UHth4r+rW32hBmUf/+/bxslH8OTpUBVzb5wpqAuqIettmgINLhwLsvnyiAviufuTKpcjCx+6DyZg/50AyYNnLwUZq6Y+Qh+t0h75fO/c0/oynCv4WtGN3ukMWEo7iCfJzv9CWynhkJgkRTEYsoMRaZY7dd9vfUjgViZQDpeTUNYOfeOj2bm6GXqOHX2coYdAsnvt2ZK1eVD5r/XNLtK/XJX/CpRgd2gUlvAxzBZI90d/7JSsXzCnfEZVW6toJ0HDSCMJ+3kF2B9EpSRZR40EtLtk/qSxAfKFxeoAG3ylVUM77/K2b+hDaDGo/1CRiBsGqxGwoKc1EGG8cDaxK36V64H/dw25TzDiO2O+zK4WO7Hizs63ZxH815ZkuPPuun7+cdhYVdPSj0/w1fwXiTeIHOwIWtrAHPb6c9Tey9yIYF3SURR/ierj2ls6AwCqAA8K27tQJsi45W8Hgt/g3dP5OeFVVEVco6q4SvQvHsn0YbstPEoherU3u/cJWosjHwHKzhTNnJSEnc4OGAee+yzOpVLiaZM2lOQvq7+9EjlUKw5+Kj326nBKcvEXnOf2ayuTcWvx6tuymYDVuUBt3o8LRRSSM2oPJ2R+DAit71ZTDfQE7iXZxfaP64pu3vN61DigQwevzZU3rJWRtCVwlvrrhKiE427Xv4Cbfjll1gGgNrqi/C5gvLJSbTaQI21uRqv+yJpF+eJobGJeq7n5gvaYatInB1jXTrrkWeh7k8ZFmteakvPjsQR9OVm/vaJlcxMHybV0lG4Son1/LvSAws2a9lJ58h1Q5QAGAUUlgqZ6TQbMiVS65mc+Fdb1vSO3/146MDVupkygo9zzd7cO+XrM8T2sSfTtTbdTqPUlwk9mL2bUrlMlcTJ2dU/Wb9XNwIWoj1Arq71MY0c+LyX/HViZpL/p4W0YJQefv7oPYtTUo80BUGQCOHfwfnlmt3tGjT0boys4MSsSC83HeUmTLGooIsOMMOOHBltBsG2H9a+cKD7QhscKmyObrz/mP0WUhgNV4tdbig5PIcoxjhdeWJYvxRt5hxqd9KAIU4PyDV0OR+7n8ZWZs0DLx6DB35A3I47ZBJbuydZUmeHRAWcc9inPkA9NrHacBx/5oM2HJ3+QNKNSJnKnDjKkvJ1qh+YlhEelK75aj9vmn4AarKG9boji24jIitEv21FdH7HjP4J5xvwjmkQyaYy9ptSuZf8H52AEOaoMs3cThcBcIHsOqxIeoFDumJwcoiiacVw8GL96doVVCG43z8fwJJrLBxsPw0CYB6+2VOU/hUGkuN5Exg+86mjqgLa2XbrNPuYaa/3emB4FgpR9I0r8WM9JjPE7DOPmGWyb3u6xx1vgykH/qMu/yyGhWPLfusIieDHClsCqegpJGsFsZcnEWMdWGDDr8+NSojh6MrkLNpSNEaeWY7rMOpQEK20PBeWk9vbZ/5nC2fG2chVsvASyACcY7xlb40GCthnvUCpmU9s0nQLNHBZ5YQE+UXm075q6+c8djzIlLIxHoLI54XxRYvmUvTTp5Ur7iUm0jVHu6bGv0FRcF1C/Lc8e2AqWoUFoqWAPxRChZl3HsUpmR1/Jdve/w1AvS9MRRIwRGTTGPe4i1hNcdmoP3ELJYhqayhiIJVOygnU0fidLmUJIt38ZvjF8otg36yNeabqI8g+6wXLTZe6CE2EsvAI/8KBv54r93cxE6zZkq394mmAeCjAVRtV9C7qkEhecpnFo4V20vOmnarH/Nfejzl/tWztUYAjMM6F3hGmdiNs+rAH1J2snnDO8E34dPibumYQeeks/QEt/meyggbS+6MKnkTN/JZE0oCDyT71o7q8t9uOGArWVElFard4pfsoyZ4jG5KB7vRlBsHmBsHmBxezbY5w+Aft33eRftUQiTUX6fLGYwoPTpAYbqS8QptBtUbJZpxZvEQhuSKCojglNrwSGJdjR0LsZHV6gQLolI35uFR/tNWtmDJq2qKKGc4/YGBXO80fZIYi2jFLdw6507fQePAL3dH57AySenoBphM0qSzVXTntoNtXIxQn4vBZVL23sVVm9IOzPS1FHFsWfHJNhYPFsdpbOSX9QdgIKyHZ8tCT6X7lnbS5R8o24VPSP9XZbbxsPKLHxtNAVGk77thAfWuuPPpQshLpcPAIga80Sk418TPn6i9WTeMij4MomZ3WETwpLCAkDDq+PG8q+Gx8evhsfHrtSFQt0odiIepE9wRfkYwqTaeCyHJNXje1Sizvs0JEMLOTDQyLBwvFb9JvB5HSvYS/F+3EnWiz8GUuUUKvN3TKsUFkOSuoMDoCH8LDaJQnPCxtjyP+v59MJD1huHvbLDt31Miim8PwidipyzvwhwvJFFOM4WB5awiCW6h8cZVNbd7VlkP/M7yP4PZTCmOVKdTtGFxHT8y5DDmaTPP56YD8qT7LFNQfEqVm6pDwQvp0cSpy5VPfGQTAgJXh4WVuYT2/yxQaE2Lz0D7Wsths9tnr2u+nrbkYmLTtXw+tmVHj4lEvodWwJXXroRGsGksJlmxC2ykhyd6SarSai+hnOxYNKq7guf6ba4Put591qKcYX46oOJlsAxVAEqVuDaRtsL3O7qkQLWJaLIY01qKFBNj4Xuxv8y5zKJk68ydeKzrMUzCA2wV0gW1SCBQFVk1JmEOMjwB2rBcGn6N8nz+TV5JOMpELdeY8P41MmS8j+QGSCdj4UkBbz0uz+igcaRozoM0Ncd1O/o9ptdyITfOsNfaNgJPJO6MU9KIJcScJLwm5Wyu98TznGy+2W2FN64O8Io9uKNEQmWxbaK11QPIp91YiyNwGOkOZKVAzulRGoR5YynwOHZnPb4jMT534XL2pVCNXmAdtrahYWPzef/yt36Y9Rl1NnNE8nod1CPY9/WFiK8Vp/UJMLP0k/Sylyx9W94eAPAHkgOV/bzag/ncgQBmjLH3seuyNmbmG4CwJxaZ4huh5F2NZ/9/sJRNjXXB4bdx1DgzQPoNFD0ghp9xWVTGeu3gGNDvJstspxOIjT0luWW9BrqHsnhqPWtSozx7uefmuZFdqT6Lf+1uHWL1LDo1U8OjgfzCkjXdjn4CE6Tix4yTIu1ZxiuxBuxwKl0OU4VoHtuywinNS/45xijGRQ4EEIg/P79cBJKO/OhQDpYQZzKXu+QnYWSJ134ZqIlMsz0neOp32cMWYCJXrYZxRMadAbYQP90aTCTJ7rta4/uWmOvfDVpoeV/8kQDrK5lD2x48UbCfVscfxyn6rdwX10uP8TzR21Fr131o2hL8oxWHLHs9ogUNlo+uwUC1Jy4fC7U7l+pGTTRiAZXREPPVlQwS1rr9iLDHx9lPoa0yJqjHwJ8TJl5JFMNYfRSrE+H/FLqrjKM9VHpD1srmOdBFBD6XeWpyFq36EJk/N29kD/ZxtA2tlcwvQ5Z70C8mBICk+P33tHs9S/txVlXjGm1FgRI+mqYxbTIDV1F7rABRFAgtM0F+0nyEqWRH4EdLuYISkyvOlQgGFQYL+FHHwC02x+XwT7PnXqEQzX1+022iFIjy/HmzfsFzKD5o6kTovL5MsSOFFcuWtgojV5rOA2mB4axPo8e2V7U+i9bGZ5N9wDEoI7Fcfgzd6S2aNyL7qxvzzG2YUx1wIlqoTPNVIto8CVKEvOL62qrU1QUJLXWgLBi65qVg0dbO+fULJyHezdHTXavpUXsPbt7hC9QHC6zB4qwizuXxNHeGCGWM2hDGL+UaUjzHy4/IbMUq6tjxV5NQlohLov7VPlcZOP767JEILYNBsfJdll4UhFEkpiXkalwFgCm0onpMpdH9S2GnNtr/VJQvkB+FexBxMVbrlFTS1/tsEiQNYvNYAjRvj4LBo4b5bRDKtQTDi3eOqzC7QqZ3uXOUesZ72u/tOUqa8FrFtG/kiqRcatmLlUMrQTy/oT/NBQ6TWH2hrO2Ol9M9FPM7HnJMTd0hpjUh2/qYH5OMh/6XoSnq4el7p53GZvsmt8nqklzEFhGwmHoczG/IzUTE18rZIP9dDp99Qu/GOtuAWYAD2xoJbNs96E2W/B4dMSltI51bOn9/0/PJ4mO/0v4pCbN7nk2+jWW1QCAq9py1dFszORnkNSTnWRuRDKkyFo4SckZ5hilRQAgOfZUVCXXficELSy6V06aUJqVsQArmHL3YJD7QNDEDpzYGPIr9YRdob/s4M1MbkqKpTH2md5z2lOfuwQX4yXYfwKaDBfxU5HIMwHg2w2ONzE0gT5WRuFdKDPGVor+ylD4j+YBIuL7EcvBjhOtp5fakMN0QVGv5Lp2tlp7A/G6DFL0eqWzqkti4Pw0G7Dnx44icJkJKjBXUv66HO8niIEjUrkEUCvzo1mj+8Q+huDD0X25zbopIkfXEdLNJa5LOFllaAnsPm6I7CoBs2CBn8Fey+PXdX5GRCpKnQd5DTNxj+gUJ420Mw4bPqFYV/1bMBuSz55GsRyB54wxBNJgwXqvi1M8QZNVPW7cewPhQMQ6Cn55DaJ7puwq/t0/ziCSdsfWmFwZJngmoBn0Y4Ml5rzutV29wK82ALA1oSjKWnY6AD+qf7hCYG6OpbUpBeBzoHBK4h53r0gwsceqeyVjVVSQb3SFtD5PkCnWs94ArVhcNjKvL1Xgh0ptiVIAUhLVVUhmGhu+BYaEHtCBuAuFRfo33sl8OIhPlKVDzWMA35InEAnuKUPl5RTE+kZ1kCAAAAAA=";
+
+const ROLES = {
+  admin: { label: "Administrador" },
+  almacen: { label: "Usuario de almacén" },
+};
+
+const INK = "#0B0E14";
+const PAPER = "#F4F6FA";
+const CARD = "#FFFFFF";
+const SIGNAL = "#1652C9";
+const SIGNAL_DARK = "#0F3D99";
+const MOSS = "#1652C9";
+const MOSS_BG = "#E7EEFC";
+const AMBER = "#8A6400";
+const AMBER_BG = "#FBF2DC";
+const RED = "#A32D2D";
+const RED_BG = "#FBEAEA";
+const LINE = "#DCE1EA";
+
+const uid = () => Math.random().toString(36).slice(2, 10);
+const today = () => {
+  const d = new Date();
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+};
+const fmtDate = (d) => {
+  const dt = new Date(d + "T00:00:00");
+  return dt.toLocaleDateString("es-CO", { day: "2-digit", month: "short", year: "numeric" });
+};
+
+// ---------- Conexión a Firebase ----------
+const CFG = window.RP_FIREBASE_CONFIG || {};
+const CONFIGURADO = !!(CFG.apiKey && CFG.projectId && !/TU[-_]/.test(String(CFG.apiKey) + String(CFG.projectId)));
+let auth = null;
+let db = null;
+if (CONFIGURADO) {
+  firebase.initializeApp(CFG);
+  auth = firebase.auth();
+  db = firebase.firestore();
+}
+const TS = () => firebase.firestore.FieldValue.serverTimestamp();
+
+const mensajeError = (e) => {
+  const c = e && e.code ? String(e.code) : "";
+  if (/auth\/(invalid-credential|wrong-password|user-not-found|invalid-login-credentials|invalid-email)/.test(c)) return "Correo o contraseña incorrectos. Intenta de nuevo.";
+  if (c === "auth/too-many-requests") return "Demasiados intentos fallidos. Espera unos minutos e inténtalo de nuevo.";
+  if (c === "auth/user-disabled") return "Este usuario está deshabilitado.";
+  if (c === "auth/network-request-failed" || c === "unavailable") return "Sin conexión con el servidor. Revisa tu internet.";
+  if (c === "permission-denied") return "No tienes permiso para realizar esta acción.";
+  return (e && e.message) ? e.message : String(e);
+};
+
+// Utilidades
+const txt = (v, max) => { const t = String(v === undefined || v === null ? "" : v).trim(); return t === "" ? null : t.slice(0, max); };
+const redondear = (n) => Math.round(Number(n) * 100) / 100;
+// El nombre del material identifica su documento (evita duplicados: "Lona", "lona " y "LONA" son el mismo)
+const slug = (s) => String(s).trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+const slugCodigo = (s) => String(s).trim().toUpperCase().replace(/[^A-Z0-9_-]+/g, "-").replace(/^-+|-+$/g, "");
+const porNombre = (a, b) => String(a.nombre).localeCompare(String(b.nombre), "es");
+const porCodigo = (a, b) => String(a.codigo).localeCompare(String(b.codigo), "es", { numeric: true });
+
+const mapMaterial = (d) => { const x = d.data(); return { id: d.id, nombre: x.nombre, categoria: x.categoria || "", unidad: x.unidad, stock: Number(x.stock), stockMinimo: Number(x.stockMinimo) }; };
+const mapHerramienta = (d) => { const x = d.data(); return { id: d.id, nombre: x.nombre, codigo: x.codigo, categoria: x.categoria || "", estado: x.estado, instalacion: x.instalacion, responsable: x.responsable, fechaSalida: x.fechaSalida, obsEntrega: x.obsEntrega }; };
+const mapMovimiento = (d) => { const x = d.data(); return { ...x, id: d.id, usuario: x.usuarioNombre }; };
+
+const MOV_RECIENTES = 300; // movimientos que se muestran en pantalla (el Excel exporta todos)
+
+function Pill({ children, tone = "neutral" }) {
+  const tones = {
+    neutral: { bg: "#EDEAE0", fg: INK },
+    good: { bg: MOSS_BG, fg: MOSS },
+    warn: { bg: AMBER_BG, fg: AMBER },
+    bad: { bg: RED_BG, fg: RED },
+    signal: { bg: "#FDE8DD", fg: SIGNAL_DARK },
+  };
+  const t = tones[tone];
+  return (
+    <span style={{ background: t.bg, color: t.fg }} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap">
+      {children}
+    </span>
+  );
+}
+
+function Field({ label, children }) {
+  return (
+    <label className="block mb-3">
+      <span className="block text-xs font-medium mb-1" style={{ color: "#5B6272" }}>{label}</span>
+      {children}
+    </label>
+  );
+}
+
+const inputStyle = {
+  width: "100%",
+  border: `1px solid ${LINE}`,
+  borderRadius: 8,
+  padding: "9px 11px",
+  fontSize: 14,
+  background: "#F7F9FC",
+  color: INK,
+  outline: "none",
+};
+
+function Modal({ title, onClose, children }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(32,33,29,0.45)" }}>
+      <div className="w-full max-w-md rounded-2xl overflow-hidden" style={{ background: CARD, maxHeight: "88vh", display: "flex", flexDirection: "column" }}>
+        <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: `1px solid ${LINE}` }}>
+          <h3 className="font-semibold text-base" style={{ color: INK }}>{title}</h3>
+          <button onClick={onClose} className="p-1 rounded-full hover:bg-black/5">
+            <X size={18} color={INK} />
+          </button>
+        </div>
+        <div className="px-5 py-4 overflow-y-auto">{children}</div>
+      </div>
+    </div>
+  );
+}
+
+function PrimaryButton({ children, onClick, type = "button", full }) {
+  return (
+    <button
+      type={type}
+      onClick={onClick}
+      style={{ background: SIGNAL, color: "#fff" }}
+      className={`rounded-lg px-4 py-2.5 text-sm font-semibold hover:opacity-90 active:scale-[0.98] transition ${full ? "w-full" : ""}`}
+    >
+      {children}
+    </button>
+  );
+}
+
+function App() {
+  const [user, setUser] = useState(undefined); // undefined = comprobando sesión
+  const [perfil, setPerfil] = useState(null);
+  const [perfilError, setPerfilError] = useState("");
+  const [tab, setTab] = useState("dashboard");
+  const [materiales, setMateriales] = useState([]);
+  const [herramientas, setHerramientas] = useState([]);
+  const [movimientos, setMovimientos] = useState([]);
+  const [loaded, setLoaded] = useState(false);
+  const [modal, setModal] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [toast, setToast] = useState(null);
+
+  const role = perfil ? perfil.rol : null;
+  const email = user && user.email ? user.email.toLowerCase() : null;
+
+  // Sesión de Firebase Auth
+  useEffect(() => {
+    if (!auth) return;
+    return auth.onAuthStateChanged((u) => setUser(u || null));
+  }, []);
+
+  // Al iniciar sesión: leer el perfil (rol) y suscribirse a los datos en vivo
+  useEffect(() => {
+    if (!db) return;
+    if (!email) {
+      setPerfil(null); setPerfilError(""); setLoaded(false);
+      setMateriales([]); setHerramientas([]); setMovimientos([]);
+      return;
+    }
+    let cancelled = false;
+    let unsubs = [];
+    (async () => {
+      try {
+        setPerfilError("");
+        const snap = await db.collection("usuarios").doc(email).get();
+        if (!snap.exists) throw new Error("Tu usuario no está autorizado en la aplicación. Pídele al administrador que te registre.");
+        const p = snap.data();
+        if (!ROLES[p.rol]) throw new Error("Tu usuario tiene un rol no válido. Contacta al administrador.");
+        if (cancelled) return;
+        setPerfil({ nombre: p.nombre || "", rol: p.rol });
+        setTab("dashboard");
+
+        const primero = { m: false, h: false, v: false };
+        const listo = (k) => { primero[k] = true; if (primero.m && primero.h && primero.v && !cancelled) setLoaded(true); };
+        const onErr = (e) => { if (!cancelled) setPerfilError(mensajeError(e)); };
+        unsubs = [
+          db.collection("materiales").onSnapshot((s) => { setMateriales(s.docs.map(mapMaterial).sort(porNombre)); listo("m"); }, onErr),
+          db.collection("herramientas").onSnapshot((s) => { setHerramientas(s.docs.map(mapHerramienta).sort(porCodigo)); listo("h"); }, onErr),
+          db.collection("movimientos").orderBy("createdAt", "desc").limit(MOV_RECIENTES).onSnapshot((s) => { setMovimientos(s.docs.map(mapMovimiento)); listo("v"); }, onErr),
+        ];
+      } catch (e) {
+        if (!cancelled) setPerfilError(mensajeError(e));
+      }
+    })();
+    return () => { cancelled = true; unsubs.forEach((u) => u()); };
+  }, [email]);
+
+  // Aviso temporal
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), toast.type === "error" ? 7000 : 2500);
+    return () => clearTimeout(t);
+  }, [toast]);
+
+  // Ejecuta una operación; si falla, el formulario queda abierto con el mensaje de error
+  const ejecutar = async (fn, okMsg) => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await fn();
+    } catch (e) {
+      setToast({ type: "error", text: mensajeError(e) });
+      setBusy(false);
+      return;
+    }
+    setModal(null);
+    if (okMsg) setToast({ type: "ok", text: okMsg });
+    setBusy(false);
+  };
+
+  // Registro de movimiento (todos los campos siempre presentes; la fecha de creación la pone el servidor)
+  const nuevoMov = (campos) => ({
+    fecha: today(), tipoRegistro: null, tipo: null,
+    materialId: null, materialNombre: null, herramientaId: null, herramientaNombre: null,
+    cantidad: null, unidad: null, proveedor: null, motivo: null, instalacion: null, responsable: null,
+    fechaSalida: null, fechaLlegada: null, obsEntrega: null, obsRecepcion: null,
+    ...campos,
+    usuarioEmail: email,
+    usuarioNombre: perfil.nombre || (perfil.rol === "admin" ? "Administrador" : "Almacén"),
+    createdAt: TS(),
+  });
+
+  const fechaValida = (f, etiqueta) => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(f)) throw new Error(`${etiqueta} no es válida.`);
+    if (f > today()) throw new Error(`${etiqueta} no puede ser futura.`);
+  };
+
+  // --- Materiales ---
+  const registrarCompra = (data) => ejecutar(async () => {
+    const nombre = txt(data.nombre, 120);
+    const cantidad = redondear(data.cantidad);
+    if (!nombre) throw new Error("El nombre del material es obligatorio.");
+    if (!(cantidad > 0)) throw new Error("La cantidad debe ser mayor a cero.");
+    const id = slug(nombre);
+    if (!id) throw new Error("El nombre del material no es válido.");
+    const ref = db.collection("materiales").doc(id);
+    const movRef = db.collection("movimientos").doc();
+    await db.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      let mat;
+      if (snap.exists) {
+        mat = snap.data();
+        tx.update(ref, { stock: redondear(Number(mat.stock) + cantidad) });
+      } else {
+        const min = redondear(data.stockMinimo === "" || data.stockMinimo === undefined ? 5 : data.stockMinimo);
+        mat = { nombre, categoria: txt(data.categoria, 80), unidad: txt(data.unidad, 30) || "unidad", stock: cantidad, stockMinimo: Number.isFinite(min) && min >= 0 ? min : 5, createdAt: TS() };
+        tx.set(ref, mat);
+      }
+      tx.set(movRef, nuevoMov({ tipoRegistro: "material", tipo: "entrada", materialId: id, materialNombre: mat.nombre, cantidad, unidad: mat.unidad, proveedor: txt(data.proveedor, 160) }));
+    });
+  }, "Compra registrada");
+
+  const registrarDescarga = (data) => ejecutar(async () => {
+    const pedida = redondear(data.cantidad);
+    if (!(pedida > 0)) throw new Error("La cantidad debe ser mayor a cero.");
+    const ref = db.collection("materiales").doc(data.materialId);
+    const movRef = db.collection("movimientos").doc();
+    await db.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      if (!snap.exists) throw new Error("El material ya no existe.");
+      const m = snap.data();
+      const stock = Number(m.stock);
+      if (stock <= 0) throw new Error(`No hay stock disponible de ${m.nombre}.`);
+      const cant = Math.min(pedida, stock); // nunca deja el stock en negativo
+      tx.update(ref, { stock: redondear(stock - cant) });
+      tx.set(movRef, nuevoMov({ tipoRegistro: "material", tipo: "salida", materialId: ref.id, materialNombre: m.nombre, cantidad: cant, unidad: m.unidad, motivo: txt(data.motivo, 300), instalacion: txt(data.instalacion, 160) }));
+    });
+  }, "Descarga registrada");
+
+  const eliminarMaterial = (id) => {
+    const m = materiales.find((x) => x.id === id);
+    if (!window.confirm(`¿Eliminar "${m ? m.nombre : "este material"}"? El historial de movimientos se conserva.`)) return;
+    ejecutar(() => db.collection("materiales").doc(id).delete(), "Material eliminado");
+  };
+
+  // --- Herramientas ---
+  const registrarNuevaHerramienta = (data) => ejecutar(async () => {
+    const nombre = txt(data.nombre, 120);
+    if (!nombre) throw new Error("El nombre de la herramienta es obligatorio.");
+    let codigo = slugCodigo(data.codigo || "").slice(0, 40);
+    if (!codigo) {
+      const n = herramientas.reduce((mx, h) => { const m = /^HRR-(\d+)$/.exec(h.codigo || ""); return m ? Math.max(mx, Number(m[1])) : mx; }, 0) + 1;
+      codigo = "HRR-" + String(n).padStart(3, "0");
+    }
+    const ref = db.collection("herramientas").doc(codigo);
+    await db.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      if (snap.exists) throw new Error(`Ya existe una herramienta con el código ${codigo}.`);
+      tx.set(ref, { codigo, nombre, categoria: txt(data.categoria, 80), estado: "almacen", instalacion: null, responsable: null, fechaSalida: null, obsEntrega: null, createdAt: TS() });
+    });
+  }, "Herramienta registrada");
+
+  const registrarSalidaHerramienta = (data) => ejecutar(async () => {
+    const instalacion = txt(data.instalacion, 160);
+    const responsable = txt(data.responsable, 120);
+    const fecha = data.fechaSalida || today();
+    const obs = txt(data.obsEntrega, 1000);
+    if (!instalacion || !responsable) throw new Error("Indica la instalación de destino y el responsable.");
+    fechaValida(fecha, "La fecha de salida");
+    const ref = db.collection("herramientas").doc(data.herramientaId);
+    const movRef = db.collection("movimientos").doc();
+    await db.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      if (!snap.exists) throw new Error("La herramienta no existe.");
+      const h = snap.data();
+      if (h.estado !== "almacen") throw new Error(`${h.nombre} ya está fuera del almacén.`);
+      tx.update(ref, { estado: "en_uso", instalacion, responsable, fechaSalida: fecha, obsEntrega: obs });
+      tx.set(movRef, nuevoMov({ fecha, tipoRegistro: "herramienta", tipo: "salida", herramientaId: ref.id, herramientaNombre: h.nombre, instalacion, responsable, fechaSalida: fecha, obsEntrega: obs }));
+    });
+  }, "Salida registrada");
+
+  const registrarRegresoHerramienta = (hSel, data) => ejecutar(async () => {
+    const fecha = data.fechaLlegada || today();
+    const obs = txt(data.obsRecepcion, 1000);
+    fechaValida(fecha, "La fecha de llegada");
+    const ref = db.collection("herramientas").doc(hSel.id);
+    const movRef = db.collection("movimientos").doc();
+    await db.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      if (!snap.exists) throw new Error("La herramienta no existe.");
+      const h = snap.data();
+      if (h.estado !== "en_uso") throw new Error(`${h.nombre} ya está en el almacén.`);
+      if (fecha < h.fechaSalida) throw new Error("La fecha de llegada no puede ser anterior a la fecha de salida.");
+      tx.update(ref, { estado: "almacen", instalacion: null, responsable: null, fechaSalida: null, obsEntrega: null });
+      tx.set(movRef, nuevoMov({ fecha, tipoRegistro: "herramienta", tipo: "regreso", herramientaId: ref.id, herramientaNombre: h.nombre, instalacion: h.instalacion, responsable: h.responsable, fechaSalida: h.fechaSalida, fechaLlegada: fecha, obsEntrega: h.obsEntrega || null, obsRecepcion: obs }));
+    });
+  }, "Regreso registrado");
+
+  const cerrarSesion = () => { auth.signOut(); };
+
+  const bajoStock = materiales.filter((m) => m.stock <= m.stockMinimo);
+  const enUso = herramientas.filter((h) => h.estado === "en_uso");
+
+  if (!db) return <SetupScreen />;
+
+  if (user === undefined || (user && !loaded && !perfilError)) {
+    return (
+      <div style={{ background: PAPER, minHeight: 480 }} className="flex items-center justify-center rounded-2xl">
+        <p style={{ color: "#5B6272" }} className="text-sm">Cargando inventario…</p>
+      </div>
+    );
+  }
+
+  if (!user) return <LoginScreen />;
+
+  if (perfilError) {
+    return (
+      <div style={{ background: INK, minHeight: 480, borderRadius: 20 }} className="flex items-center justify-center p-6">
+        <div style={{ background: CARD, width: "100%", maxWidth: 380 }} className="rounded-2xl p-7">
+          <p className="text-sm mb-4 flex items-start gap-2" style={{ color: RED }}><AlertTriangle size={16} /> {perfilError}</p>
+          <PrimaryButton full onClick={cerrarSesion}>Cerrar sesión</PrimaryButton>
+        </div>
+      </div>
+    );
+  }
+
+  const NavItem = ({ id, icon: Icon, label }) => (
+    <button
+      onClick={() => setTab(id)}
+      className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-medium transition"
+      style={{
+        background: tab === id ? "rgba(232,93,44,0.16)" : "transparent",
+        color: tab === id ? SIGNAL : "#C9C7B8",
+      }}
+    >
+      <Icon size={17} />
+      {label}
+    </button>
+  );
+
+  return (
+    <div style={{ background: PAPER, color: INK, minHeight: 600, borderRadius: 20, overflow: "hidden", fontFamily: "ui-sans-serif, system-ui, sans-serif" }} className="flex flex-col md:flex-row">
+      {/* Sidebar */}
+      <div style={{ background: INK, minWidth: 220 }} className="flex md:flex-col justify-between p-4">
+        <div>
+          <div className="flex items-center gap-2 px-2 mb-6">
+            <img src={LOGO_URL} alt="Rueda Publicidad" style={{ width: 44, height: 34, objectFit: "contain" }} />
+            <div>
+              <p className="text-white font-bold text-sm leading-tight tracking-tight">RUEDA</p>
+              <p className="text-white font-bold text-sm leading-tight tracking-tight">PUBLICIDAD</p>
+            </div>
+          </div>
+          <div className="hidden md:flex flex-col gap-1">
+            <NavItem id="dashboard" icon={LayoutDashboard} label="Panel" />
+            <NavItem id="materiales" icon={Package} label="Materiales" />
+            <NavItem id="herramientas" icon={Wrench} label="Herramientas" />
+            <NavItem id="movimientos" icon={ClipboardList} label="Movimientos" />
+          </div>
+        </div>
+      </div>
+
+      {/* Mobile tabs */}
+      <div className="md:hidden flex gap-1 px-3 pt-3 overflow-x-auto" style={{ background: INK }}>
+        <NavItem id="dashboard" icon={LayoutDashboard} label="Panel" />
+        <NavItem id="materiales" icon={Package} label="Materiales" />
+        <NavItem id="herramientas" icon={Wrench} label="Herramientas" />
+        <NavItem id="movimientos" icon={ClipboardList} label="Movimientos" />
+      </div>
+
+      {/* Main */}
+      <div className="flex-1 min-w-0">
+        {/* Top bar */}
+        <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: `1px solid ${LINE}` }}>
+          <h2 className="font-bold text-lg" style={{ color: INK }}>
+            {{ dashboard: "Panel general", materiales: "Materiales", herramientas: "Herramientas", movimientos: "Historial de movimientos" }[tab]}
+          </h2>
+          <div className="flex items-center gap-2">
+            {busy && <span className="text-xs" style={{ color: "#6B7280" }}>Guardando…</span>}
+            <span
+              title={user.email}
+              className="flex items-center gap-2 pl-3 pr-3 py-2 rounded-full text-sm font-medium"
+              style={{ background: CARD, border: `1px solid ${LINE}` }}
+            >
+              <User size={15} />
+              {ROLES[role].label}
+            </span>
+            <button
+              onClick={cerrarSesion}
+              title="Cerrar sesión"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-full text-sm font-medium hover:bg-black/5"
+              style={{ border: `1px solid ${LINE}`, color: INK }}
+            >
+              <LogOut size={15} />
+              <span className="hidden sm:inline">Salir</span>
+            </button>
+          </div>
+        </div>
+
+        <div className="p-6">
+          {tab === "dashboard" && (
+            <Dashboard
+              materiales={materiales} herramientas={herramientas} movimientos={movimientos}
+              bajoStock={bajoStock} enUso={enUso}
+            />
+          )}
+          {tab === "materiales" && (
+            <Materiales
+              role={role} materiales={materiales} setModal={setModal} eliminarMaterial={eliminarMaterial}
+            />
+          )}
+          {tab === "herramientas" && (
+            <Herramientas
+              role={role} herramientas={herramientas} setModal={setModal}
+            />
+          )}
+          {tab === "movimientos" && <Movimientos movimientos={movimientos} role={role} onError={(m) => setToast({ type: "error", text: m })} />}
+        </div>
+      </div>
+
+      {modal === "compra" && (
+        <FormCompra materiales={materiales} onSubmit={registrarCompra} onClose={() => setModal(null)} />
+      )}
+      {modal === "descarga" && (
+        <FormDescarga materiales={materiales} onSubmit={registrarDescarga} onClose={() => setModal(null)} />
+      )}
+      {modal === "nuevaHerramienta" && (
+        <FormNuevaHerramienta onSubmit={registrarNuevaHerramienta} onClose={() => setModal(null)} />
+      )}
+      {modal && modal.type === "salidaHerramienta" && (
+        <FormSalidaHerramienta herramienta={modal.h} onSubmit={registrarSalidaHerramienta} onClose={() => setModal(null)} />
+      )}
+      {modal && modal.type === "regresoHerramienta" && (
+        <FormRegresoHerramienta herramienta={modal.h} onSubmit={(data) => registrarRegresoHerramienta(modal.h, data)} onClose={() => setModal(null)} />
+      )}
+
+      {toast && (
+        <div style={{ position: "fixed", top: 16, left: "50%", transform: "translateX(-50%)", zIndex: 60, maxWidth: "92vw",
+                      background: toast.type === "error" ? RED_BG : MOSS_BG, color: toast.type === "error" ? RED : SIGNAL_DARK,
+                      border: `1px solid ${toast.type === "error" ? RED : SIGNAL}`, boxShadow: "0 6px 24px rgba(0,0,0,.15)" }}
+             className="rounded-xl px-4 py-3 text-sm font-medium flex items-start gap-2">
+          {toast.type === "error" ? <AlertTriangle size={16} /> : <CheckCircle2 size={16} />}
+          <span>{toast.text}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function StatCard({ label, value, icon: Icon, tone }) {
+  const tones = {
+    neutral: { bg: CARD, fg: INK },
+    signal: { bg: SIGNAL, fg: "#fff" },
+    warn: { bg: AMBER_BG, fg: AMBER },
+  };
+  const t = tones[tone || "neutral"];
+  return (
+    <div style={{ background: t.bg, border: tone === "signal" ? "none" : `1px solid ${LINE}` }} className="rounded-2xl p-4 flex-1 min-w-[150px]">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-xs font-medium opacity-80" style={{ color: t.fg }}>{label}</span>
+        <Icon size={16} color={t.fg} />
+      </div>
+      <p className="text-2xl font-bold" style={{ color: t.fg }}>{value}</p>
+    </div>
+  );
+}
+
+function Dashboard({ materiales, herramientas, movimientos, bajoStock, enUso }) {
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-wrap gap-3">
+        <StatCard label="Referencias de material" value={materiales.length} icon={Package} tone="signal" />
+        <StatCard label="Herramientas registradas" value={herramientas.length} icon={Wrench} />
+        <StatCard label="Herramientas fuera del almacén" value={enUso.length} icon={MapPin} />
+        <StatCard label="Materiales con stock bajo" value={bajoStock.length} icon={AlertTriangle} tone={bajoStock.length ? "warn" : "neutral"} />
+      </div>
+
+      {bajoStock.length > 0 && (
+        <div style={{ background: CARD, border: `1px solid ${LINE}` }} className="rounded-2xl p-5">
+          <h3 className="font-semibold text-sm mb-3 flex items-center gap-2" style={{ color: AMBER }}>
+            <AlertTriangle size={16} /> Materiales por reponer
+          </h3>
+          <div className="flex flex-col gap-2">
+            {bajoStock.map((m) => (
+              <div key={m.id} className="flex items-center justify-between text-sm py-1.5" style={{ borderBottom: `1px solid ${LINE}` }}>
+                <span>{m.nombre}</span>
+                <Pill tone="warn">{m.stock} {m.unidad} disponibles</Pill>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {enUso.length > 0 && (
+        <div style={{ background: CARD, border: `1px solid ${LINE}` }} className="rounded-2xl p-5">
+          <h3 className="font-semibold text-sm mb-3 flex items-center gap-2" style={{ color: INK }}>
+            <MapPin size={16} /> Herramientas en instalación
+          </h3>
+          <div className="flex flex-col gap-2">
+            {enUso.map((h) => (
+              <div key={h.id} className="flex items-center justify-between text-sm py-1.5" style={{ borderBottom: `1px solid ${LINE}` }}>
+                <div>
+                  <p className="font-medium">{h.nombre}</p>
+                  <p className="text-xs" style={{ color: "#6B7280" }}>{h.instalacion} · a cargo de {h.responsable}</p>
+                </div>
+                <Pill tone="signal">desde {fmtDate(h.fechaSalida)}</Pill>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div style={{ background: CARD, border: `1px solid ${LINE}` }} className="rounded-2xl p-5">
+        <h3 className="font-semibold text-sm mb-3">Actividad reciente</h3>
+        {movimientos.length === 0 ? (
+          <p className="text-sm" style={{ color: "#6B7280" }}>Todavía no hay movimientos registrados.</p>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {movimientos.slice(0, 6).map((mv) => <MovimientoRow key={mv.id} mv={mv} />)}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function MovimientoRow({ mv }) {
+  const isEntrada = mv.tipo === "entrada" || mv.tipo === "regreso";
+  return (
+    <div className="flex items-center gap-3 text-sm py-2" style={{ borderBottom: `1px solid ${LINE}` }}>
+      <div style={{ background: isEntrada ? MOSS_BG : RED_BG }} className="w-7 h-7 rounded-full flex items-center justify-center shrink-0">
+        {isEntrada ? <ArrowDownToLine size={13} color={MOSS} /> : <ArrowUpFromLine size={13} color={RED} />}
+      </div>
+      <div className="flex-1 min-w-0">
+        {mv.tipoRegistro === "material" ? (
+          <p className="truncate">
+            <span className="font-medium">{mv.tipo === "entrada" ? "Compra" : "Descarga"}</span> · {mv.cantidad} {mv.unidad} de {mv.materialNombre}
+          </p>
+        ) : (
+          <>
+            <p className="truncate">
+              <span className="font-medium">{mv.tipo === "salida" ? "Salida" : "Regreso"}</span> · {mv.herramientaNombre}
+              {mv.tipo === "salida" && ` → ${mv.instalacion} (${mv.responsable})`}
+            </p>
+            {mv.tipo === "regreso" && (
+              <p className="text-xs" style={{ color: "#6B7280" }}>
+                Salió: {mv.fechaSalida ? fmtDate(mv.fechaSalida) : "—"} · Llegó: {fmtDate(mv.fechaLlegada || mv.fecha)}
+              </p>
+            )}
+            {mv.obsEntrega && (
+              <p className="text-xs" style={{ color: "#6B7280" }}><span className="font-medium">Obs. de entrega:</span> {mv.obsEntrega}</p>
+            )}
+            {mv.obsRecepcion && (
+              <p className="text-xs" style={{ color: "#6B7280" }}><span className="font-medium">Obs. de recepción:</span> {mv.obsRecepcion}</p>
+            )}
+          </>
+        )}
+        <p className="text-xs" style={{ color: "#6B7280" }}>{fmtDate(mv.fecha)} · {mv.usuario}</p>
+      </div>
+    </div>
+  );
+}
+
+function Materiales({ role, materiales, setModal, eliminarMaterial }) {
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-wrap gap-2">
+        {role === "admin" && (
+          <PrimaryButton onClick={() => setModal("compra")}>
+            <span className="flex items-center gap-1.5"><Plus size={15} /> Registrar compra</span>
+          </PrimaryButton>
+        )}
+        <button
+          onClick={() => setModal("descarga")}
+          className="rounded-lg px-4 py-2.5 text-sm font-semibold"
+          style={{ background: CARD, border: `1px solid ${LINE}`, color: INK }}
+        >
+          <span className="flex items-center gap-1.5"><ArrowUpFromLine size={15} /> Registrar descarga</span>
+        </button>
+      </div>
+
+      <div style={{ background: CARD, border: `1px solid ${LINE}` }} className="rounded-2xl overflow-hidden">
+        {materiales.length === 0 ? (
+          <p className="p-5 text-sm" style={{ color: "#6B7280" }}>No hay materiales registrados todavía.</p>
+        ) : materiales.map((m) => {
+          const bajo = m.stock <= m.stockMinimo;
+          return (
+            <div key={m.id} className="flex items-center justify-between gap-3 px-5 py-3.5" style={{ borderBottom: `1px solid ${LINE}` }}>
+              <div className="min-w-0">
+                <p className="font-medium text-sm truncate">{m.nombre}</p>
+                <p className="text-xs" style={{ color: "#6B7280" }}>{m.categoria} · mínimo {m.stockMinimo} {m.unidad}</p>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <Pill tone={bajo ? "warn" : "good"}>{m.stock} {m.unidad}</Pill>
+                {role === "admin" && (
+                  <button onClick={() => eliminarMaterial(m.id)} className="p-1.5 rounded-lg hover:bg-black/5">
+                    <Trash2 size={15} color="#6B7280" />
+                  </button>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function Herramientas({ role, herramientas, setModal }) {
+  return (
+    <div className="flex flex-col gap-4">
+      {role === "admin" && (
+        <div>
+          <PrimaryButton onClick={() => setModal("nuevaHerramienta")}>
+            <span className="flex items-center gap-1.5"><Plus size={15} /> Registrar herramienta</span>
+          </PrimaryButton>
+        </div>
+      )}
+
+      <div style={{ background: CARD, border: `1px solid ${LINE}` }} className="rounded-2xl overflow-hidden">
+        {herramientas.map((h) => (
+          <div key={h.id} className="flex items-center justify-between gap-3 px-5 py-3.5" style={{ borderBottom: `1px solid ${LINE}` }}>
+            <div className="min-w-0">
+              <p className="font-medium text-sm truncate">{h.nombre}</p>
+              <p className="text-xs" style={{ color: "#6B7280" }}>
+                {h.codigo} · {h.categoria}
+                {h.estado === "en_uso" && ` · en ${h.instalacion}, a cargo de ${h.responsable}`}
+              </p>
+              {h.estado === "en_uso" && (
+                <>
+                  <p className="text-xs" style={{ color: "#6B7280" }}>Fecha de salida: {fmtDate(h.fechaSalida)}</p>
+                  {h.obsEntrega && (
+                    <p className="text-xs" style={{ color: "#6B7280" }}>
+                      <span className="font-medium">Obs. de entrega:</span> {h.obsEntrega}
+                    </p>
+                  )}
+                </>
+              )}
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              {h.estado === "almacen" ? (
+                <>
+                  <Pill tone="good"><CheckCircle2 size={12} /> En almacén</Pill>
+                  <button
+                    onClick={() => setModal({ type: "salidaHerramienta", h })}
+                    className="text-xs font-semibold px-3 py-1.5 rounded-lg"
+                    style={{ background: SIGNAL, color: "#fff" }}
+                  >
+                    Enviar
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Pill tone="signal"><Clock size={12} /> En instalación</Pill>
+                  <button
+                    onClick={() => setModal({ type: "regresoHerramienta", h })}
+                    className="text-xs font-semibold px-3 py-1.5 rounded-lg"
+                    style={{ background: CARD, border: `1px solid ${LINE}`, color: INK }}
+                  >
+                    Registrar regreso
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+const limpiar = (v) => (v === undefined || v === null || v === "—" ? "" : v);
+const fechaExcel = (f) => {
+  const [y, m, d] = String(f).split("-").map(Number);
+  return new Date(Date.UTC(y, (m || 1) - 1, d || 1, 12));
+};
+
+function exportarMovimientosExcel(movimientos) {
+  const headers = ["Fecha", "Tipo de registro", "Movimiento", "Ítem", "Cantidad", "Unidad", "Proveedor", "Instalación / Obra", "Motivo", "Responsable", "Fecha de salida", "Fecha de llegada", "Obs. de entrega", "Obs. de recepción", "Registrado por"];
+  const filas = movimientos.map((mv) => {
+    const esMat = mv.tipoRegistro === "material";
+    const movimiento = esMat
+      ? (mv.tipo === "entrada" ? "Compra" : "Descarga")
+      : (mv.tipo === "salida" ? "Salida" : "Regreso");
+    // Compatibilidad con movimientos antiguos que no guardaban estas fechas
+    const fSalida = esMat ? "" : (mv.fechaSalida || (mv.tipo === "salida" ? mv.fecha : ""));
+    const fLlegada = esMat ? "" : (mv.fechaLlegada || (mv.tipo === "regreso" ? mv.fecha : ""));
+    return [
+      fechaExcel(mv.fecha),
+      esMat ? "Material" : "Herramienta",
+      movimiento,
+      esMat ? mv.materialNombre : mv.herramientaNombre,
+      esMat ? mv.cantidad : "",
+      esMat ? limpiar(mv.unidad) : "",
+      limpiar(mv.proveedor),
+      limpiar(mv.instalacion),
+      limpiar(mv.motivo),
+      limpiar(mv.responsable),
+      fSalida ? fechaExcel(fSalida) : "",
+      fLlegada ? fechaExcel(fLlegada) : "",
+      esMat ? "" : limpiar(mv.obsEntrega),
+      esMat ? "" : limpiar(mv.obsRecepcion),
+      limpiar(mv.usuario),
+    ];
+  });
+
+  // Resumen de materiales (compras vs descargas)
+  const resumen = {};
+  movimientos.filter((mv) => mv.tipoRegistro === "material").forEach((mv) => {
+    const r = resumen[mv.materialNombre] || (resumen[mv.materialNombre] = { unidad: mv.unidad, compras: 0, descargas: 0 });
+    if (mv.tipo === "entrada") r.compras += Number(mv.cantidad) || 0;
+    else r.descargas += Number(mv.cantidad) || 0;
+  });
+  const filasResumen = Object.keys(resumen).sort().map((n) => [n, resumen[n].unidad, resumen[n].compras, resumen[n].descargas, resumen[n].compras - resumen[n].descargas]);
+
+  const stamp = today();
+  const nombreArchivo = `movimientos_rueda_publicidad_${stamp}`;
+
+  if (typeof XLSX === "undefined") {
+    // Respaldo: CSV si no cargó la librería de Excel (sin internet)
+    const esc = (v) => `"${String(v instanceof Date ? v.toISOString().slice(0, 10) : v).replace(/"/g, '""')}"`;
+    const csv = [headers, ...filas].map((r) => r.map(esc).join(";")).join("\r\n");
+    const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8;" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = nombreArchivo + ".csv";
+    document.body.appendChild(a); a.click(); a.remove();
+    return;
+  }
+
+  const wb = XLSX.utils.book_new();
+
+  const ws = XLSX.utils.aoa_to_sheet([headers, ...filas], { cellDates: true, dateNF: "dd/mm/yyyy" });
+  ws["!cols"] = [{ wch: 12 }, { wch: 16 }, { wch: 13 }, { wch: 34 }, { wch: 10 }, { wch: 10 }, { wch: 22 }, { wch: 28 }, { wch: 26 }, { wch: 22 }, { wch: 15 }, { wch: 15 }, { wch: 40 }, { wch: 40 }, { wch: 16 }];
+  ws["!autofilter"] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: filas.length, c: headers.length - 1 } }) };
+  XLSX.utils.book_append_sheet(wb, ws, "Movimientos");
+
+  const wsR = XLSX.utils.aoa_to_sheet([["Material", "Unidad", "Total comprado", "Total descargado", "Neto"], ...filasResumen]);
+  wsR["!cols"] = [{ wch: 34 }, { wch: 10 }, { wch: 16 }, { wch: 18 }, { wch: 10 }];
+  XLSX.utils.book_append_sheet(wb, wsR, "Resumen materiales");
+
+  XLSX.writeFile(wb, nombreArchivo + ".xlsx", { cellDates: true });
+}
+
+function Movimientos({ movimientos, role, onError }) {
+  const [exportando, setExportando] = useState(false);
+
+  const exportar = async () => {
+    if (exportando || role !== "admin") return;
+    setExportando(true);
+    try {
+      const snap = await db.collection("movimientos").orderBy("createdAt", "desc").get();
+      const todos = snap.docs.map(mapMovimiento);
+      if (todos.length) exportarMovimientosExcel(todos);
+    } catch (e) {
+      onError("No se pudo exportar: " + mensajeError(e));
+    }
+    setExportando(false);
+  };
+
+  return (
+    <div className="flex flex-col gap-4">
+      {role === "admin" && (
+        <div className="flex flex-wrap items-center gap-3">
+          <PrimaryButton onClick={exportar}>
+            <span className="flex items-center gap-1.5"><Download size={15} /> {exportando ? "Generando…" : "Exportar a Excel"}</span>
+          </PrimaryButton>
+          <span className="text-xs" style={{ color: "#6B7280" }}>
+            {movimientos.length === 0 ? "No hay movimientos para exportar." : "Exporta todo el historial · incluye hoja de resumen de materiales"}
+          </span>
+        </div>
+      )}
+      <div style={{ background: CARD, border: `1px solid ${LINE}` }} className="rounded-2xl overflow-hidden">
+        {movimientos.length === 0 ? (
+          <p className="p-5 text-sm" style={{ color: "#6B7280" }}>No hay movimientos registrados todavía.</p>
+        ) : (
+          <div className="px-5">
+            {movimientos.map((mv) => <MovimientoRow key={mv.id} mv={mv} />)}
+          </div>
+        )}
+      </div>
+      {movimientos.length >= MOV_RECIENTES && (
+        <p className="text-xs" style={{ color: "#6B7280" }}>Se muestran los últimos {MOV_RECIENTES} movimientos. El Excel incluye todos.</p>
+      )}
+    </div>
+  );
+}
+
+function FormCompra({ onSubmit, onClose }) {
+  const [form, setForm] = useState({ nombre: "", categoria: "", unidad: "unidad", cantidad: "", stockMinimo: "", proveedor: "" });
+  const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
+  return (
+    <Modal title="Registrar compra de material" onClose={onClose}>
+      <Field label="Material"><input style={inputStyle} value={form.nombre} onChange={set("nombre")} placeholder="Ej. Vinilo adhesivo blanco" /></Field>
+      <Field label="Categoría"><input style={inputStyle} value={form.categoria} onChange={set("categoria")} placeholder="Ej. Impresión" /></Field>
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="Cantidad"><input style={inputStyle} type="number" value={form.cantidad} onChange={set("cantidad")} placeholder="0" /></Field>
+        <Field label="Unidad">
+          <select style={inputStyle} value={form.unidad} onChange={set("unidad")}>
+            {["unidad", "m2", "galón", "rollo", "caja", "kg", "litro"].map((u) => <option key={u} value={u}>{u}</option>)}
+          </select>
+        </Field>
+      </div>
+      <Field label="Stock mínimo de alerta"><input style={inputStyle} type="number" value={form.stockMinimo} onChange={set("stockMinimo")} placeholder="5" /></Field>
+      <Field label="Proveedor (opcional)"><input style={inputStyle} value={form.proveedor} onChange={set("proveedor")} placeholder="Nombre del proveedor" /></Field>
+      <PrimaryButton full onClick={() => form.nombre && form.cantidad && onSubmit(form)}>Registrar compra</PrimaryButton>
+    </Modal>
+  );
+}
+
+function FormDescarga({ materiales, onSubmit, onClose }) {
+  const [form, setForm] = useState({ materialId: materiales[0]?.id || "", cantidad: "", motivo: "", instalacion: "" });
+  const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
+  const mat = materiales.find((m) => m.id === form.materialId);
+  return (
+    <Modal title="Registrar descarga de material" onClose={onClose}>
+      <Field label="Material">
+        <select style={inputStyle} value={form.materialId} onChange={set("materialId")}>
+          {materiales.map((m) => <option key={m.id} value={m.id}>{m.nombre} ({m.stock} {m.unidad} disp.)</option>)}
+        </select>
+      </Field>
+      <Field label={`Cantidad ${mat ? `(máx. ${mat.stock} ${mat.unidad})` : ""}`}>
+        <input style={inputStyle} type="number" value={form.cantidad} onChange={set("cantidad")} placeholder="0" />
+      </Field>
+      <Field label="Instalación / obra de destino"><input style={inputStyle} value={form.instalacion} onChange={set("instalacion")} placeholder="Ej. Valla Av. 68 con 26" /></Field>
+      <Field label="Motivo (opcional)"><input style={inputStyle} value={form.motivo} onChange={set("motivo")} placeholder="Ej. Instalación de pauta" /></Field>
+      <PrimaryButton full onClick={() => form.materialId && form.cantidad && onSubmit(form)}>Registrar descarga</PrimaryButton>
+    </Modal>
+  );
+}
+
+function FormNuevaHerramienta({ onSubmit, onClose }) {
+  const [form, setForm] = useState({ nombre: "", codigo: "", categoria: "" });
+  const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
+  return (
+    <Modal title="Registrar herramienta" onClose={onClose}>
+      <Field label="Nombre"><input style={inputStyle} value={form.nombre} onChange={set("nombre")} placeholder="Ej. Taladro percutor Bosch" /></Field>
+      <Field label="Código interno (opcional)"><input style={inputStyle} value={form.codigo} onChange={set("codigo")} placeholder="Ej. HRR-007" /></Field>
+      <Field label="Categoría"><input style={inputStyle} value={form.categoria} onChange={set("categoria")} placeholder="Ej. Eléctrica" /></Field>
+      <PrimaryButton full onClick={() => form.nombre && onSubmit(form)}>Registrar herramienta</PrimaryButton>
+    </Modal>
+  );
+}
+
+function SetupScreen() {
+  return (
+    <div style={{ background: INK, minHeight: 560, borderRadius: 20 }} className="flex items-center justify-center p-6">
+      <div style={{ background: CARD, width: "100%", maxWidth: 440 }} className="rounded-2xl p-7">
+        <h2 className="font-semibold text-base mb-2" style={{ color: INK }}>Falta conectar Firebase</h2>
+        <p className="text-sm mb-3" style={{ color: "#5B6272" }}>
+          Abre el archivo <code>firebase-config.js</code> y reemplaza los datos de ejemplo con los de tu app web de Firebase
+          (Configuración del proyecto → Tus apps). Los pasos completos están en el README.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function LoginScreen() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const submit = async (e) => {
+    e.preventDefault();
+    if (!email.trim() || !password) { setError("Ingresa tu correo y tu contraseña."); return; }
+    setLoading(true);
+    setError("");
+    try {
+      await auth.signInWithEmailAndPassword(email.trim(), password);
+    } catch (err) {
+      setError(mensajeError(err));
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div style={{ background: INK, minHeight: 560, borderRadius: 20 }} className="flex items-center justify-center p-6">
+      <form onSubmit={submit} style={{ background: CARD, width: "100%", maxWidth: 380 }} className="rounded-2xl p-7">
+        <div className="flex justify-center mb-5">
+          <img src={LOGO_URL} alt="Rueda Publicidad" style={{ width: 150, height: "auto", objectFit: "contain" }} />
+        </div>
+        <h2 className="font-semibold text-base mb-1" style={{ color: INK }}>Control de inventario</h2>
+        <p className="text-sm mb-5" style={{ color: "#5B6272" }}>Ingresa con tu usuario para continuar.</p>
+
+        <Field label="Correo">
+          <div className="relative">
+            <User size={15} style={{ position: "absolute", left: 11, top: 12 }} color="#8A8F9A" />
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => { setEmail(e.target.value); setError(""); }}
+              placeholder="correo@empresa.com"
+              style={{ ...inputStyle, paddingLeft: 34 }}
+              autoComplete="username"
+              autoFocus
+            />
+          </div>
+        </Field>
+
+        <Field label="Contraseña">
+          <div className="relative">
+            <Lock size={15} style={{ position: "absolute", left: 11, top: 12 }} color="#8A8F9A" />
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => { setPassword(e.target.value); setError(""); }}
+              placeholder="Ingresa tu contraseña"
+              style={{ ...inputStyle, paddingLeft: 34 }}
+              autoComplete="current-password"
+            />
+          </div>
+        </Field>
+
+        {error && (
+          <p className="text-xs mb-3 flex items-center gap-1.5" style={{ color: RED }}>
+            <AlertTriangle size={13} /> {error}
+          </p>
+        )}
+
+        <PrimaryButton type="submit" full>{loading ? "Ingresando…" : "Ingresar"}</PrimaryButton>
+      </form>
+    </div>
+  );
+}
+
+const textareaStyle = { ...inputStyle, resize: "vertical", minHeight: 76, fontFamily: "inherit" };
+
+function FormSalidaHerramienta({ herramienta, onSubmit, onClose }) {
+  const [form, setForm] = useState({ herramientaId: herramienta.id, instalacion: "", responsable: "", fechaSalida: today(), obsEntrega: "" });
+  const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
+  return (
+    <Modal title={`Enviar: ${herramienta.nombre}`} onClose={onClose}>
+      <Field label="Instalación de destino"><input style={inputStyle} value={form.instalacion} onChange={set("instalacion")} placeholder="Ej. Vallero Autopista Norte" /></Field>
+      <Field label="Responsable de la herramienta"><input style={inputStyle} value={form.responsable} onChange={set("responsable")} placeholder="Nombre del técnico o instalador" /></Field>
+      <Field label="Fecha de salida"><input style={inputStyle} type="date" value={form.fechaSalida} max={today()} onChange={set("fechaSalida")} /></Field>
+      <Field label="Observaciones de entrega (opcional)">
+        <textarea style={textareaStyle} value={form.obsEntrega} onChange={set("obsEntrega")} placeholder="Cómo se entrega la herramienta: estado, accesorios incluidos, daños previos…" />
+      </Field>
+      <PrimaryButton full onClick={() => form.instalacion && form.responsable && form.fechaSalida && onSubmit(form)}>Confirmar salida</PrimaryButton>
+    </Modal>
+  );
+}
+
+function FormRegresoHerramienta({ herramienta, onSubmit, onClose }) {
+  const [form, setForm] = useState({ fechaLlegada: today(), obsRecepcion: "" });
+  const [error, setError] = useState("");
+  const set = (k) => (e) => { setForm({ ...form, [k]: e.target.value }); setError(""); };
+  const confirmar = () => {
+    if (!form.fechaLlegada) { setError("Indica la fecha de llegada."); return; }
+    if (herramienta.fechaSalida && form.fechaLlegada < herramienta.fechaSalida) {
+      setError("La fecha de llegada no puede ser anterior a la fecha de salida.");
+      return;
+    }
+    onSubmit(form);
+  };
+  return (
+    <Modal title={`Regreso: ${herramienta.nombre}`} onClose={onClose}>
+      <div className="rounded-lg p-3 mb-3 text-xs" style={{ background: "#F7F9FC", border: `1px solid ${LINE}`, color: "#5B6272" }}>
+        <p>Salió el {fmtDate(herramienta.fechaSalida)} hacia <span className="font-medium">{herramienta.instalacion}</span> (a cargo de {herramienta.responsable}).</p>
+        {herramienta.obsEntrega && <p className="mt-1"><span className="font-medium">Obs. de entrega:</span> {herramienta.obsEntrega}</p>}
+      </div>
+      <Field label="Fecha de llegada"><input style={inputStyle} type="date" value={form.fechaLlegada} min={herramienta.fechaSalida || undefined} max={today()} onChange={set("fechaLlegada")} /></Field>
+      <Field label="Observaciones de recepción (opcional)">
+        <textarea style={textareaStyle} value={form.obsRecepcion} onChange={set("obsRecepcion")} placeholder="Cómo se recibe la herramienta: estado, faltantes, daños, desgaste…" />
+      </Field>
+      {error && (
+        <p className="text-xs mb-3 flex items-center gap-1.5" style={{ color: RED }}>
+          <AlertTriangle size={13} /> {error}
+        </p>
+      )}
+      <PrimaryButton full onClick={confirmar}>Confirmar regreso</PrimaryButton>
+    </Modal>
+  );
+}
+
+const rootEl = document.getElementById("root");
+const root = ReactDOM.createRoot(rootEl);
+root.render(React.createElement(App));
+
+</script>
+
+<script>
+  (function () {
+    var code = document.getElementById("app-source").textContent;
+    var output = Babel.transform(code, {
+      presets: [["react", { runtime: "classic" }]]
+    }).code;
+    (0, eval)(output);
+  })();
+</script>
+</body>
+</html>
